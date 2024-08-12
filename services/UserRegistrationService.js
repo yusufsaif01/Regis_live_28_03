@@ -257,13 +257,13 @@ class UserRegistrationService extends UserService {
 
       // Function to generate OTP
       const serviceInst = new OtpService();
-      const OTP = await serviceInst.otp_generate(
-        userData.email,
-        accountActivationURL,
-        userData.first_name || userData.name
-      );
+      // const OTP = await serviceInst.otp_generate(
+      //   userData.email,
+      //   accountActivationURL,
+      //   userData.first_name || userData.name
+      //);
 
-      console.log("otp isssssssss", OTP);
+      
       //  this.emailService.emailVerification(
       //  userData.email,
       //accountActivationURL,

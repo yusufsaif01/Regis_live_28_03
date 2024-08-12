@@ -342,7 +342,7 @@ class UserService extends BaseService {
       let loginDetails = await this.loginUtilityInst.findOneForProfileFetch({
         user_id: user,
       });
-
+      console.log(loginDetails)
       if (loginDetails) {
         if (loginDetails.is_email_varified !== "true") {
           return responseHandler(

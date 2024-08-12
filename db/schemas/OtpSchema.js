@@ -11,16 +11,24 @@ module.exports = {
     },
     email: {
       type: String,
-      required: true,
+      
+    },
+    user_id:{
+      type:String,
     },
     name: {
       type: String,
-      required: true,
+     
+    },
+    mobile_number: {
+      type: String,
+      
     },
     otp: {
       type: String,
       required: true,
     },
+  
     createdAt: {
       type: Date,
       default: Date.now,

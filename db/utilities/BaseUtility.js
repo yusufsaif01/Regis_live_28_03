@@ -610,7 +610,8 @@ console.log("conditions issss",conditions)
         return results;
       } else {
         const modelnameis = await this.model.modelName;
-
+       //const isMongoUpdate= await this.model.updateOne(conditions, updatedDoc, options);
+       //console.log("isMongoUpdate",isMongoUpdate)
         var mysql = require("mysql2/promise");
         var con = await mysql.createConnection({
           host: "yftregistration.mysql.database.azure.com",
@@ -630,7 +631,7 @@ console.log("conditions issss",conditions)
         var key = "password";
         var cipher_for_fisrt_name = crypto.createCipher(algorithm, key);
         var cipher_for_last_name = crypto.createCipher(algorithm, key);
-        var cipher_for_phone = crypto.createCipher(algorithm, key);
+        //var cipher_for_phone = crypto.createCipher(algorithm, key);
         var cipher_for_gender = crypto.createCipher(algorithm, key);
         var cipher_for_dob = crypto.createCipher(algorithm, key);
         var cipher_for_height_feet = crypto.createCipher(algorithm, key);
@@ -654,9 +655,9 @@ console.log("conditions issss",conditions)
           cipher_for_fisrt_name.update(data.first_name, "utf8", "hex") +
           cipher_for_fisrt_name.final("hex");
 
-        var enc_phone =
-          cipher_for_phone.update(data.phone, "utf8", "hex") +
-          cipher_for_phone.final("hex");
+        // var enc_phone =
+        //   cipher_for_phone.update(data.phone, "utf8", "hex") +
+        //   cipher_for_phone.final("hex");
 
         var enc_lastname =
           cipher_for_last_name.update(data.last_name, "utf8", "hex") +
@@ -703,7 +704,7 @@ console.log("conditions issss",conditions)
         const collegeis = data.college ? data.college : "";
         const schoolis = data.school ? data.school : "";
         const universityis = data.university ? data.university : "";
-        const sql = `UPDATE ${modelnameis} SET phone='${enc_phone}',first_name='${enc_first_name}',last_name='${enc_lastname}',gender='${enc_gender}',dob='${data.dob}',height_feet='${data.height_feet}',height_inches='${data.height_inches}',weight='${weightis}',country_name='${enc_country_name}',country_id='${data.country.id}',state_id='${data.state.id}',state_name='${data.state.name}',district_id='${data.district.id}',district_name='${data.district.name}',bio='${enc_bio}',player_type='${data.player_type}',institute_college='${collegeis}',institute_university='${universityis}',institute_school='${schoolis}'
+        const sql = `UPDATE ${modelnameis} SET first_name='${enc_first_name}',last_name='${enc_lastname}',gender='${enc_gender}',dob='${data.dob}',height_feet='${data.height_feet}',height_inches='${data.height_inches}',weight='${weightis}',country_name='${enc_country_name}',country_id='${data.country.id}',state_id='${data.state.id}',state_name='${data.state.name}',district_id='${data.district.id}',district_name='${data.district.name}',bio='${enc_bio}',player_type='${data.player_type}',institute_college='${collegeis}',institute_university='${universityis}',institute_school='${schoolis}'
      
         where user_id = '${conditions.user_id}'`;
 
@@ -714,7 +715,7 @@ console.log("conditions issss",conditions)
         console.log(result);
         return result;
       }
-      //	let result = await this.model.updateOne(conditions, updatedDoc, options);
+      
     } catch (e) {
       console.log(
         `Error in updateOne() while updating data for ${this.schemaObj.schemaName} :: ${e}`
@@ -784,7 +785,7 @@ console.log("conditions issss",conditions)
         var algorithm = "aes256"; // or any other algorithm supported by OpenSSL
         var key = "password";
         var cipher_for_name = crypto.createCipher(algorithm, key);
-        var cipher_for_phone = crypto.createCipher(algorithm, key);
+       // var cipher_for_phone = crypto.createCipher(algorithm, key);
         var cipher_for_short_name = crypto.createCipher(algorithm, key);
         var cipher_for_country_name = crypto.createCipher(algorithm, key);
         var cipher_for_state_name = crypto.createCipher(algorithm, key);
@@ -798,9 +799,9 @@ console.log("conditions issss",conditions)
           cipher_for_name.update(data.name, "utf8", "hex") +
           cipher_for_name.final("hex");
 
-        var enc_phone =
-          cipher_for_phone.update(data.phone, "utf8", "hex") +
-          cipher_for_phone.final("hex");
+        // var enc_phone =
+        //   cipher_for_phone.update(data.phone, "utf8", "hex") +
+        //   cipher_for_phone.final("hex");
 
         var enc_short_name =
           cipher_for_short_name.update(data.short_name, "utf8", "hex") +
@@ -831,7 +832,7 @@ console.log("conditions issss",conditions)
           cipher_for_enc_bio.final("hex");
         const stadium_name = data.stadium_name ? data.stadium_name : "";
         const pincode = data.pincode ? data.pincode : "";
-        const sql = `UPDATE ${modelnameis} SET phone='${enc_phone}',name='${enc_name}',short_name='${data.short_name}',mobile_number='${data.mobile_number}',address_pincode='${pincode}',stadium_name='${stadium_name}',country_name='${enc_country_name}',country_id='${data.country.id}',state_id='${data.state.id}',state_name='${data.state.name}',district_id='${data.district.id}',district_name='${data.district.name}',address_fulladdress='${data.address.full_address}',founded_in='${data.founded_in}',bio='${enc_bio}'
+        const sql = `UPDATE ${modelnameis} SET name='${enc_name}',short_name='${data.short_name}',mobile_number='${data.mobile_number}',address_pincode='${pincode}',stadium_name='${stadium_name}',country_name='${enc_country_name}',country_id='${data.country.id}',state_id='${data.state.id}',state_name='${data.state.name}',district_id='${data.district.id}',district_name='${data.district.name}',address_fulladdress='${data.address.full_address}',founded_in='${data.founded_in}',bio='${enc_bio}'
       where user_id = '${conditions.user_id}'`;
 
         const [result, fields] = await con.execute(sql);
