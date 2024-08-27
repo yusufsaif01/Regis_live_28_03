@@ -202,6 +202,7 @@ class UserRegistrationService extends UserService {
       dataObjForMongo.first_name = userData.first_name;
       dataObjForMongo.last_name = userData.last_name;
       dataObjForMongo.country_code = userData.country_code;
+      dataObjForMongo.phone = userData.phone;
       dataObjForMongo.name = userData.name;
       dataObjForMongo.termsAccepted = userData.termsAccepted;
       dataObjForMongo.member_type = userData.member_type;
