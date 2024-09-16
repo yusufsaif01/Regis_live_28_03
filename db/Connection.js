@@ -1,8 +1,10 @@
 const mongoose = require("mongoose");
+var mysql = require("mysql2/promise");
 mongoose.Promise = require("bluebird");
 const config = require("../config");
 const modelAutoload = require("./model/autoload");
-const mysql = require("mysql");
+const fs = require("fs");
+var path = require("path");
 class Connection {
   constructor() {
     this.config = config.db;
@@ -35,6 +37,30 @@ class Connection {
       return mongoose.connect(hostURL);
     } catch (err) {
       console.error({ err }, "Error in mongo DB connection.");
+      throw err;
+    }
+  }
+
+  async connectMySql() {
+    try {
+      var config = {
+        host: "yftregistration.mysql.database.azure.com",
+        user: "yftregistration",
+        password: "Dyt799@#mysqlServer",
+        database: "yft_registration_in",
+        port: 3306,
+        ssl: {
+          ca: fs.readFileSync(
+            path.join(
+              __dirname,
+              "./utilities/certificate/DigiCertGlobalRootCA.crt.pem"
+            )
+          ),
+        },
+      };
+      return mysql.createConnection(config);
+    } catch (err) {
+      console.error({ err }, "Error in mYsql Connect DB connection.");
       throw err;
     }
   }

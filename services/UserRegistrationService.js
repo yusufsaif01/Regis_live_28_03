@@ -25,6 +25,7 @@ const PLAYER_TYPE = require("../constants/PlayerType");
 var crypto = require("crypto");
 const fs = require("fs");
 var path = require("path");
+var conn = require("../db/ConnectionMysql");
 const {
   EmailClient,
   KnownEmailSendStatus,
@@ -84,24 +85,9 @@ class UserRegistrationService extends UserService {
       }
     }
 
-    var mysql = require("mysql2/promise");
-
-    var con = await mysql.createConnection({
-      host: "yftregistration.mysql.database.azure.com",
-      user: "yftregistration",
-      password: "Dyt799@#mysqlServer",
-      database: "yft_registration_in",
-      port: 3306,
-      ssl: {
-        ca: fs.readFileSync(
-          path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-        ),
-      },
-    });
-
     const sql = "SELECT * FROM login_details WHERE username = 'abc0@gmail.com'";
 
-    const [result, fields] = await con.query(sql);
+    const [result, fields] = await conn.query(sql);
 
     //const user = await this.loginUtilityInst.findOne({ "username": registerUser.email });
 

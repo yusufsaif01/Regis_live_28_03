@@ -598,7 +598,7 @@ class UserService extends BaseService {
 
           data.member_type = loginDetails.member_type;
           data.profile_status = loginDetails.profile_status;
-
+          console.log("data before decryption is",data)
           var algorithm = "aes256"; // or any other algorithm supported by OpenSSL
           var key = "password";
           var decipher_for_email = crypto.createDecipher(algorithm, key);
@@ -695,7 +695,7 @@ class UserService extends BaseService {
 
           data.phone = phone;
           data.profile_status = "verified";
-
+          console.log("data after decryption is",data)
           return data;
         } else {
           return Promise.reject(

@@ -17,6 +17,7 @@ const ACTIVITY = require("../constants/Activity");
 const redisServiceInst = require("../redis/RedisService");
 const UtilityService = require("./UtilityService");
 const ProfileStatus = require("../constants/ProfileStatus");
+var conn = require("../db/ConnectionMysql");
 const fs = require("fs");
 var path = require("path");
 class AuthService {
@@ -386,21 +387,7 @@ class AuthService {
   }
 
   async createPassword(email, new_password, confirmPassword) {
-    var mysql = require("mysql2/promise");
-
-    // Create the connection to database
- var connection = await mysql.createConnection({
-   host: "yftregistration.mysql.database.azure.com",
-   user: "yftregistration",
-   password: "Dyt799@#mysqlServer",
-   database: "yft_registration_in",
-   port: 3306,
-   ssl: {
-     ca: fs.readFileSync(
-       path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-     ),
-   },
- });
+  
     try {
       console.log("inside connection email=>", email)
       console.log("inside connection new=>", email);
@@ -414,7 +401,7 @@ class AuthService {
       });
       var text = email;
       var condition = `'${text}'`;
-      const [results1, fields] = await connection.execute(
+      const [results1, fields] = await conn.execute(
         `SELECT * FROM login_details WHERE user_id = ${condition}`
       );
       if (results1) {

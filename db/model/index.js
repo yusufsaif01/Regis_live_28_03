@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
-
 class ModelProvider {
 	getModel(schemaObj = {}) {
+		
 		let existingModels = mongoose.modelNames();
 		if (existingModels.includes(schemaObj.schemaName)) {
 			return mongoose.model(schemaObj.schemaName);

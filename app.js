@@ -16,6 +16,7 @@ global.__basedir = path.resolve(__dirname);
 
 /*Db Connection*/
 db.connectDB();
+/*Mysql Connection*/
 
 app.use(logger('dev'));
 
@@ -25,7 +26,7 @@ app.use(cookieParser());
 
 app.use(StorageProvider.addUploadMiddleware({
   limits: {
-    fileSize: 5 * 1024 * 1024 * 1024 // 5 GB
+    fileSize: 15 * 1024 * 1024 * 1024 // 15 GB
   },
   createParentPath: true,
   uriDecodeFileNames: true,
@@ -33,7 +34,7 @@ app.use(StorageProvider.addUploadMiddleware({
   preserveExtension: 4,
   abortOnLimit: true,
   limitHandler: function (req, res, next) {
-      next(new errors.MaxFileLimitExceeded(null, { size: "5 GB" }));
+      next(new errors.MaxFileLimitExceeded(null, { size: "15 GB" }));
   },
   useTempFiles: true,
   tempFileDir: "/tmp",

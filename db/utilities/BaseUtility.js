@@ -4,6 +4,8 @@ const errors = require("../../errors");
 var crypto = require("crypto");
 const fs = require("fs");
 var path = require("path");
+var conn = require("../ConnectionMysql");
+
 class BaseUtility {
   constructor(schemaObj) {
     this.schemaObj = schemaObj;
@@ -89,20 +91,7 @@ console.log("conditions issss",conditions)
     }
   }
   async findOne(conditions = {}, projection = [], options = {}) {
-    var mysql = require("mysql2/promise");
-
-    var con = await mysql.createConnection({
-      host: "yftregistration.mysql.database.azure.com",
-      user: "yftregistration",
-      password: "Dyt799@#mysqlServer",
-      database: "yft_registration_in",
-      port: 3306,
-      ssl: {
-        ca: fs.readFileSync(
-          path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-        ),
-      },
-    });
+   
     try {
       if (_.isEmpty(this.model)) {
         await this.getModel();
@@ -117,7 +106,7 @@ console.log("conditions issss",conditions)
           return value;
         }
         if (typeof value === "string") {
-          return `"${mysql.escape(value)}"`;
+          return `"${escape(value)}"`;
         }
         throw new Error("Unsupported value type!");
       }
@@ -133,7 +122,7 @@ console.log("conditions issss",conditions)
 
       const sql = `Select * FROM ${modelnameis} where ?`;
 
-      const [result, fields] = await con.query(sql, where(conditions));
+      const [result, fields] = await conn.query(sql, where(conditions));
 
       const data = await this.model
         .findOne(conditions, projection, options)
@@ -149,20 +138,7 @@ console.log("conditions issss",conditions)
   }
 
   async findOneForProfileFetch(conditions = {}, projection = [], options = {}) {
-    var mysql = require("mysql2/promise");
-
-    var con = await mysql.createConnection({
-      host: "yftregistration.mysql.database.azure.com",
-      user: "yftregistration",
-      password: "Dyt799@#mysqlServer",
-      database: "yft_registration_in",
-      port: 3306,
-      ssl: {
-        ca: fs.readFileSync(
-          path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-        ),
-      },
-    });
+  
     try {
       if (_.isEmpty(this.model)) {
         await this.getModel();
@@ -173,7 +149,7 @@ console.log("conditions issss",conditions)
       const modelnameis = await this.model.modelName;
 
       const sql = `Select * FROM ${modelnameis} where ?`;
-      const [result, fields] = await con.query(sql, conditions);
+      const [result, fields] = await conn.query(sql, conditions);
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
@@ -181,6 +157,7 @@ console.log("conditions issss",conditions)
       const res = Object.assign({}, ...result);
       if (data !== null) {
         res.avatar_url = data.avatar_url;
+        res.type = data.type;
       }
 
       return res;
@@ -197,20 +174,7 @@ console.log("conditions issss",conditions)
     projection = [],
     options = {}
   ) {
-    var mysql = require("mysql2/promise");
-
-    var con = await mysql.createConnection({
-      host: "yftregistration.mysql.database.azure.com",
-      user: "yftregistration",
-      password: "Dyt799@#mysqlServer",
-      database: "yft_registration_in",
-      port: 3306,
-      ssl: {
-        ca: fs.readFileSync(
-          path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-        ),
-      },
-    });
+  
     try {
       if (_.isEmpty(this.model)) {
         await this.getModel();
@@ -221,12 +185,12 @@ console.log("conditions issss",conditions)
       const modelnameis = await this.model.modelName;
 
       const sql = `Select * FROM ${modelnameis} where ?`;
-      const [result, fields] = await con.query(sql, conditions);
+      const [result, fields] = await conn.query(sql, conditions);
 
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-
+      console.log("data from mongoDb is",data)
       const res = Object.assign({}, ...result);
       res.avatar_url = data.avatar_url;
       res.strong_foot = data.strong_foot;
@@ -235,6 +199,10 @@ console.log("conditions issss",conditions)
       res.former_club_academy = data.former_club_academy;
       res.associated_clud_academy = data.associated_club_academy;
       res.position = data.position;
+      res.trophies = data.trophies;
+      res.top_signings = data.top_signings;
+      res.type = data.type;
+      //res.phone=data.phone
       return res;
     } catch (e) {
       console.log(
@@ -253,27 +221,12 @@ console.log("conditions issss",conditions)
 
       const modelnameis = await this.model.modelName;
 
-      var mysql = require("mysql2/promise");
-
-      var con = await mysql.createConnection({
-        host: "yftregistration.mysql.database.azure.com",
-        user: "yftregistration",
-        password: "Dyt799@#mysqlServer",
-        database: "yft_registration_in",
-        port: 3306,
-        ssl: {
-          ca: fs.readFileSync(
-            path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-          ),
-        },
-      });
-
       const returnData = con.connect(function (err) {
         if (err) throw err;
 
         const sql = `Select * FROM ${modelnameis} where ?`;
 
-        con.query(sql, conditions, function (err, result) {
+        conn.query(sql, conditions, function (err, result) {
           if (err) throw err;
 
           return result;
@@ -301,22 +254,10 @@ console.log("conditions issss",conditions)
 
       const modelnameis = await this.model.modelName;
       var emptydata = [];
-      var mysql = require("mysql2/promise");
-      var con = await mysql.createConnection({
-        host: "yftregistration.mysql.database.azure.com",
-        user: "yftregistration",
-        password: "Dyt799@#mysqlServer",
-        database: "yft_registration_in",
-        port: 3306,
-        ssl: {
-          ca: fs.readFileSync(
-            path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-          ),
-        },
-      });
+   
 
       const sql = `Select * FROM ${modelnameis} where ?`;
-      const [result, fields] = await con.query(sql, conditions);
+      const [result, fields] = await conn.query(sql, conditions);
 
       // const data = await this.model
       //   .findOne(conditions, projection, options)
@@ -397,21 +338,7 @@ console.log("conditions issss",conditions)
   }
 
   async insert(record_for_mysql = {}, record_for_mongoDb = {}) {
-    var mysql = require("mysql2/promise");
-
-    var con = await mysql.createConnection({
-      host: "yftregistration.mysql.database.azure.com",
-      user: "yftregistration",
-      password: "Dyt799@#mysqlServer",
-      database: "yft_registration_in",
-      port: 3306,
-      ssl: {
-        ca: fs.readFileSync(
-          path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-        ),
-      },
-    });
-
+   
     try {
       if (_.isEmpty(this.model)) {
         await this.getModel();
@@ -422,8 +349,8 @@ console.log("conditions issss",conditions)
       //MySql Database
       const data = record_for_mysql;
       const sql = `INSERT INTO ${modelnameis} SET ?`;
-
-      const [result, fields] = await con.query(sql, data, true);
+     
+      const [result,row]=await conn.query(sql, data, true)
 
       console.log("data before insert is", record_for_mongoDb);
 
@@ -539,22 +466,10 @@ console.log("conditions issss",conditions)
 
       const modelnameis = await this.model.modelName;
 
-      var mysql = require("mysql2/promise");
-      var con = await mysql.createConnection({
-        host: "yftregistration.mysql.database.azure.com",
-        user: "yftregistration",
-        password: "Dyt799@#mysqlServer",
-        database: "yft_registration_in",
-        port: 3306,
-        ssl: {
-          ca: fs.readFileSync(
-            path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-          ),
-        },
-      });
+     
 
       const sql = `UPDATE login_details SET is_email_varified= 'true', status= 'active' where user_id = '${conditions.user_id}'`;
-      const [result, fields] = await con.execute(sql);
+      const [result, fields] = await conn.execute(sql);
 
       return result;
 
@@ -612,19 +527,7 @@ console.log("conditions issss",conditions)
         const modelnameis = await this.model.modelName;
        //const isMongoUpdate= await this.model.updateOne(conditions, updatedDoc, options);
        //console.log("isMongoUpdate",isMongoUpdate)
-        var mysql = require("mysql2/promise");
-        var con = await mysql.createConnection({
-          host: "yftregistration.mysql.database.azure.com",
-          user: "yftregistration",
-          password: "Dyt799@#mysqlServer",
-          database: "yft_registration_in",
-          port: 3306,
-          ssl: {
-            ca: fs.readFileSync(
-              path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-            ),
-          },
-        });
+      
         console.log("data isssssss insideeeeeeee Updateeeeeeeeee");
         console.log(data);
         var algorithm = "aes256"; // or any other algorithm supported by OpenSSL
@@ -708,7 +611,7 @@ console.log("conditions issss",conditions)
      
         where user_id = '${conditions.user_id}'`;
 
-        const [result, fields] = await con.execute(sql);
+        const [result, fields] = await conn.execute(sql);
         console.log("sql condition is========>");
         console.log(sql);
         console.log("result issss");
@@ -767,19 +670,7 @@ console.log("conditions issss",conditions)
 
       const modelnameis = await this.model.modelName;
 
-      var mysql = require("mysql2/promise");
-      var con = await mysql.createConnection({
-        host: "yftregistration.mysql.database.azure.com",
-        user: "yftregistration",
-        password: "Dyt799@#mysqlServer",
-        database: "yft_registration_in",
-        port: 3306,
-        ssl: {
-          ca: fs.readFileSync(
-            path.join(__dirname, "./certificate/DigiCertGlobalRootCA.crt.pem")
-          ),
-        },
-      });
+    
 
       if (data._category !== "professional_details") {
         var algorithm = "aes256"; // or any other algorithm supported by OpenSSL
@@ -835,7 +726,7 @@ console.log("conditions issss",conditions)
         const sql = `UPDATE ${modelnameis} SET name='${enc_name}',short_name='${data.short_name}',mobile_number='${data.mobile_number}',address_pincode='${pincode}',stadium_name='${stadium_name}',country_name='${enc_country_name}',country_id='${data.country.id}',state_id='${data.state.id}',state_name='${data.state.name}',district_id='${data.district.id}',district_name='${data.district.name}',address_fulladdress='${data.address.full_address}',founded_in='${data.founded_in}',bio='${enc_bio}'
       where user_id = '${conditions.user_id}'`;
 
-        const [result, fields] = await con.execute(sql);
+        const [result, fields] = await conn.execute(sql);
         console.log("sql condition is========>");
         console.log(sql);
         console.log("result issss");
@@ -864,7 +755,7 @@ console.log("conditions issss",conditions)
         const sql = `UPDATE ${modelnameis} SET association='${data.association}',league='${data.league}',top_signings_name='${top_sing}',contact_persion_designation='${contact_persion_designation}',contact_persion_name='${contact_person_name}',contact_persion_email='${contact_person_email}',contact_persion_mobile_number='${contact_person_mobile}'
       where user_id = '${conditions.user_id}'`;
 
-        const [result, fields] = await con.execute(sql);
+        const [result, fields] = await conn.execute(sql);
         console.log("sql condition is========>");
         console.log(sql);
         console.log("result issss");
