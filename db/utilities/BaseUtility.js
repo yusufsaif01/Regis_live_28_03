@@ -40,7 +40,7 @@ class BaseUtility {
         await this.getModel();
       }
       conditions.deleted_at = { $exists: false };
-console.log("conditions issss",conditions)
+      console.log("conditions issss", conditions);
       projection = !_.isEmpty(projection) ? projection : { _id: 0, __v: 0 };
       let result = await this.model
         .findOne(conditions, projection, options)
@@ -91,7 +91,6 @@ console.log("conditions issss",conditions)
     }
   }
   async findOne(conditions = {}, projection = [], options = {}) {
-   
     try {
       if (_.isEmpty(this.model)) {
         await this.getModel();
@@ -138,7 +137,6 @@ console.log("conditions issss",conditions)
   }
 
   async findOneForProfileFetch(conditions = {}, projection = [], options = {}) {
-  
     try {
       if (_.isEmpty(this.model)) {
         await this.getModel();
@@ -174,7 +172,6 @@ console.log("conditions issss",conditions)
     projection = [],
     options = {}
   ) {
-  
     try {
       if (_.isEmpty(this.model)) {
         await this.getModel();
@@ -190,7 +187,7 @@ console.log("conditions issss",conditions)
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-      console.log("data from mongoDb is",data)
+      console.log("data from mongoDb is", data);
       const res = Object.assign({}, ...result);
       res.avatar_url = data.avatar_url;
       res.strong_foot = data.strong_foot;
@@ -202,6 +199,8 @@ console.log("conditions issss",conditions)
       res.trophies = data.trophies;
       res.top_signings = data.top_signings;
       res.type = data.type;
+      res.createdAt = data.createdAt;
+      res.deleted_at= data.deleted_at
       //res.phone=data.phone
       return res;
     } catch (e) {
@@ -254,7 +253,6 @@ console.log("conditions issss",conditions)
 
       const modelnameis = await this.model.modelName;
       var emptydata = [];
-   
 
       const sql = `Select * FROM ${modelnameis} where ?`;
       const [result, fields] = await conn.query(sql, conditions);
@@ -336,21 +334,38 @@ console.log("conditions issss",conditions)
       throw e;
     }
   }
-
+  async insertInMongo(record = {}) {
+    try {
+      if (_.isEmpty(this.model)) {
+        await this.getModel();
+      }
+      console.log("record issssss");
+      console.log(record);
+      let result = await this.model.create(record);
+      console.log("data after insert is===>");
+      console.log(result);
+      return result;
+    } catch (e) {
+      console.log(
+        `Error in insert() while inserting data for ${this.schemaObj.schemaName} :: ${e}`
+      );
+      throw e;
+    }
+  }
   async insert(record_for_mysql = {}, record_for_mongoDb = {}) {
-   
     try {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
       await this.model.create(record_for_mongoDb);
+
       const modelnameis = await this.model.modelName;
       delete record_for_mysql.opening_days;
       //MySql Database
       const data = record_for_mysql;
       const sql = `INSERT INTO ${modelnameis} SET ?`;
-     
-      const [result,row]=await conn.query(sql, data, true)
+
+      const [result, row] = await conn.query(sql, data, true);
 
       console.log("data before insert is", record_for_mongoDb);
 
@@ -449,7 +464,7 @@ console.log("conditions issss",conditions)
       throw e;
     }
   }
-
+  
   async updateOne(conditions = {}, updatedDoc = {}, options = {}) {
     try {
       if (_.isEmpty(this.model)) {
@@ -465,8 +480,6 @@ console.log("conditions issss",conditions)
       );
 
       const modelnameis = await this.model.modelName;
-
-     
 
       const sql = `UPDATE login_details SET is_email_varified= 'true', status= 'active' where user_id = '${conditions.user_id}'`;
       const [result, fields] = await conn.execute(sql);
@@ -492,10 +505,8 @@ console.log("conditions issss",conditions)
         await this.getModel();
       }
       conditions.deleted_at = { $exists: false };
-      console.log("before insert in condition is=>", conditions);
-      console.log("before insert in data is=>", data);
+
       const results = await this.model.updateOne(conditions, data, options);
-      console.log("result after insert is", results);
 
       return results;
     } catch (e) {
@@ -525,9 +536,9 @@ console.log("conditions issss",conditions)
         return results;
       } else {
         const modelnameis = await this.model.modelName;
-       //const isMongoUpdate= await this.model.updateOne(conditions, updatedDoc, options);
-       //console.log("isMongoUpdate",isMongoUpdate)
-      
+        //const isMongoUpdate= await this.model.updateOne(conditions, updatedDoc, options);
+        //console.log("isMongoUpdate",isMongoUpdate)
+
         console.log("data isssssss insideeeeeeee Updateeeeeeeeee");
         console.log(data);
         var algorithm = "aes256"; // or any other algorithm supported by OpenSSL
@@ -618,7 +629,6 @@ console.log("conditions issss",conditions)
         console.log(result);
         return result;
       }
-      
     } catch (e) {
       console.log(
         `Error in updateOne() while updating data for ${this.schemaObj.schemaName} :: ${e}`
@@ -670,13 +680,11 @@ console.log("conditions issss",conditions)
 
       const modelnameis = await this.model.modelName;
 
-    
-
       if (data._category !== "professional_details") {
         var algorithm = "aes256"; // or any other algorithm supported by OpenSSL
         var key = "password";
         var cipher_for_name = crypto.createCipher(algorithm, key);
-       // var cipher_for_phone = crypto.createCipher(algorithm, key);
+        // var cipher_for_phone = crypto.createCipher(algorithm, key);
         var cipher_for_short_name = crypto.createCipher(algorithm, key);
         var cipher_for_country_name = crypto.createCipher(algorithm, key);
         var cipher_for_state_name = crypto.createCipher(algorithm, key);
@@ -733,12 +741,8 @@ console.log("conditions issss",conditions)
         console.log(result);
         return result;
       } else {
-        console.log("condition is", conditions);
-        console.log("updateedDocs is", updatedDoc);
-        console.log("options is", options);
-        console.log("data is", data);
         let mongoInsert = await this.model.updateOne(conditions, data, options);
-        console.log("mongo Insert is", mongoInsert);
+
         const top_sing = data.top_signings.map((item) => item.name).toString();
         const contact_person_name = data.contact_person
           .map((item) => item.name)

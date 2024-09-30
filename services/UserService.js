@@ -787,6 +787,7 @@ class UserService extends BaseService {
       league_other: 1,
       association: 1,
       association_other: 1,
+      createdAt:1,
       _id: 0,
     };
   }

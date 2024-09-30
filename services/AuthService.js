@@ -16,6 +16,7 @@ const ROLE = require("../constants/Role");
 const ACTIVITY = require("../constants/Activity");
 const redisServiceInst = require("../redis/RedisService");
 const UtilityService = require("./UtilityService");
+const ConnectionService = require("./ConnectioService");
 const ProfileStatus = require("../constants/ProfileStatus");
 var conn = require("../db/ConnectionMysql");
 const fs = require("fs");
@@ -389,8 +390,7 @@ class AuthService {
   async createPassword(email, new_password, confirmPassword) {
   
     try {
-      console.log("inside connection email=>", email)
-      console.log("inside connection new=>", email);
+      
       await this.validateCreatePassword(
        // tokenData,
         new_password,
@@ -421,13 +421,13 @@ class AuthService {
         );
         
         const query = `UPDATE login_details SET password='${password}', forgot_password_token= "", profile_status= '${ProfileStatus.VERIFIED}' where user_id = ${condition}`;
-        const [results2, fields] = await connection.query(query);
+        const [results2, fields] = await conn.query(query);
       //  await redisServiceInst.deleteByKey(
        //   `keyForForgotPassword${tokenData.forgot_password_token}`
       //  );
         let playerName = "";
         if (playerRole == ROLE.PLAYER) {
-          const [results3, fields] = await connection.execute(
+          const [results3, fields] = await conn.execute(
             `Select * FROM player_details where user_id=${condition}`
           );
           if (results3) {
@@ -441,11 +441,25 @@ class AuthService {
             }
           }
         }
+
+
+ let serviceInst = new ConnectionService();
+
+
+   serviceInst.followMember(
+     {
+       sent_by: loginDetails.user_id,
+       send_to: "ea2918d0-5135-4aa2-9e72-8f3db66f35fd",
+     },
+     false
+   );
+ 
+
          this.emailService.welcome(email);
-         this.emailService.postEmailConfirmation({
-          email: email,
-          name: playerName,
-        });
+        //  this.emailService.postEmailConfirmation({
+        //   email: email,
+        //   name: playerName,
+        // });
        
         return Promise.resolve();
       }
