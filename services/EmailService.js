@@ -30,8 +30,9 @@ class EmailService {
       otp:otp
     });
   }
-  async welcome(email) {
-    await this.sendMail("welcome", { email: email });
+  async welcome(email, name) {
+    console.log("inside welcome email",email, name)
+    await this.sendMail("welcome", { email: email, name: name });
   }
 
   async changePassword(email, name) {
@@ -59,6 +60,7 @@ class EmailService {
 
   async sendMail(mailTemplate, data) {
     try {
+      console.log("inside sendMail-",mailTemplate,data)
       let { to, subject, html, text } = mailTemplates[mailTemplate](data);
       if (html) {
         html = render(html, data);

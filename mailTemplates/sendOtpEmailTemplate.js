@@ -1,7 +1,7 @@
 module.exports = ({ email, otp, activation_link, name }) => {
   return {
     to: email,
-    subject: "Website access request",
+    subject: "Re-verify your email on YFTChain",
     html() {
       return `
       <table class="spacer" style="
@@ -106,7 +106,7 @@ module.exports = ({ email, otp, activation_link, name }) => {
                text-align: center;
                width: 90%;
                ">
-                        Use the below OTP to access the website.
+                        Use the below OTP to re-verify your email.
                 </p>
             </th>
         </tr>

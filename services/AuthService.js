@@ -402,9 +402,11 @@ class AuthService {
       var text = email;
       var condition = `'${text}'`;
       const [results1, fields] = await conn.execute(
-        `SELECT * FROM login_details WHERE user_id = ${condition}`
+        `SELECT * FROM login_details WHERE username = ${condition}`
       );
+      console.log(`SELECT * FROM login_details WHERE user_id = ${condition}`);
       if (results1) {
+        console.log("result one is*****", results1)
         const playerRole = results1.map((data) => data.role).toString();
         const user_id = results1.map((data) => data.user_id).toString();
         const email1 = results1.map((data) => data.username).toString();
@@ -426,16 +428,27 @@ class AuthService {
        //   `keyForForgotPassword${tokenData.forgot_password_token}`
       //  );
         let playerName = "";
+        console.log("before if")
+        console.log("playerRole",playerRole)
         if (playerRole == ROLE.PLAYER) {
+          
           const [results3, fields] = await conn.execute(
             `Select * FROM player_details where user_id=${condition}`
           );
+          console.log("before if result3", results3);
           if (results3) {
-            playerName = results3.first_name;
+            console.log("inside if result3");
+            let playerDetails =
+              await this.playerUtilityInst.findOneInMongo({
+                email: email,
+              });
+            playerName = playerDetails.first_name;
+            console.log("fetch from mongodb is000",playerDetails)
           } else {
-            let clubAcademyDetails = this.utilityService.getClubDetails(
-              loginDetails.user_id
-            );
+            let clubAcademyDetails =
+              await this.clubAcademyUtilityInst.findOneInMongo({
+                email: email,
+              });
             if (clubAcademyDetails) {
               playerName = clubAcademyDetails.name;
             }
@@ -453,9 +466,12 @@ class AuthService {
      },
      false
    );
- 
+ console.log("player name after fetch is",playerName)
 
-         this.emailService.welcome(email);
+        this.emailService.welcome(
+          email,
+          playerName,
+        );
         //  this.emailService.postEmailConfirmation({
         //   email: email,
         //   name: playerName,

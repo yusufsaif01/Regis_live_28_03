@@ -202,6 +202,7 @@ class BaseUtility {
       res.createdAt = data.createdAt;
       res.deleted_at= data.deleted_at
       //res.phone=data.phone
+      
       return res;
     } catch (e) {
       console.log(

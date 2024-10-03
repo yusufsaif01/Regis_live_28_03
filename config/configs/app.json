@@ -64,14 +64,14 @@
 	"privacy_policy_url": {
         "doc": "provide default twitter url",
         "format": "String",
-        "default": "http://yftchain.com/privacy-policy",
+        "default": "https://www.yftchain.com/privacy-policy",
         "env": "PRIVACY_POLICY_URL",
         "arg": "privacy_policy_url"
     },
 	"terms_and_conditions_url": {
         "doc": "provide default twitter url",
         "format": "String",
-        "default": "http://yftchain.com/terms&conditions",
+        "default": "https://www.yftchain.com/term&condition",
         "env": "TERMS_AND_CONDITIONS_URL",
         "arg": "terms_and_conditions_url"
     },
