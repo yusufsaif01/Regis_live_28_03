@@ -30,6 +30,7 @@ const {
   EmailClient,
   KnownEmailSendStatus,
 } = require("@azure/communication-email");
+const FootCoachUtility = require("../db/utilities/FootCoachUtility");
 /**
  *
  *
@@ -51,6 +52,7 @@ class UserRegistrationService extends UserService {
     this.emailService = new EmailService();
     this.adminUtilityInst = new AdminUtility();
     this.footPlayerUtilityInst = new FootPlayerUtility();
+    this.footCoachUtilityInst = new FootCoachUtility();
   }
   connectionString =
     "endpoint=https://mycsr.unitedstates.communication.azure.com/;accesskey=hSLMNiZDd0wogPYNdT9tpLeqeWAO20/WMMcgjTCalrtIKKgLq+J66RHYPqvd8lK3Us9jfUKZzaySrUuplKohWw==";
@@ -280,43 +282,70 @@ class UserRegistrationService extends UserService {
     try {
       console.log("before findone query in update FootPlayerColletction");
       console.log(requestedData)
-      let footplayerInvite =
-        await this.footPlayerUtilityInst.findOneFootRequest({
-          "send_to.email": requestedData.email,
-          status: FOOTPLAYER_STATUS.INVITED,
-        });
-      
-      
-       if (_.isEmpty(footplayerInvite)) {
-         return Promise.resolve();
-       }
-      console.log("after find one query in FootPlayerCollection");
-      console.log("footplayerInvite data is",footplayerInvite)
-      if (_.isEmpty(footplayerInvite)) {
-        console.log("inside _.isEmpty==>")
-        return Promise.resolve();
+      if (requestedData.member_type === 'player') {
+        
+        let footplayerInvite =
+          await this.footPlayerUtilityInst.findOneFootRequest({
+            "send_to.email": requestedData.email,
+            status: FOOTPLAYER_STATUS.INVITED,
+          });
+        if (_.isEmpty(footplayerInvite)) {
+          return Promise.resolve();
+        }
+        if (_.isEmpty(footplayerInvite)) {
+          return Promise.resolve();
+        }
+        let updatedDoc = {};
+        if (requestedData.member_type != MEMBER.PLAYER) {
+          updatedDoc = { status: FOOTPLAYER_STATUS.REJECTED };
+        } else {
+          updatedDoc = {
+            "send_to.user_id": requestedData.user_id,
+            "send_to.name": `${requestedData.first_name} ${requestedData.last_name}`,
+            "send_to.phone": requestedData.phone,
+            status: FOOTPLAYER_STATUS.PENDING,
+          };
+        }
+        await this.footPlayerUtilityInst.updateMany(
+          {
+            "send_to.email": requestedData.email,
+            status: FOOTPLAYER_STATUS.INVITED,
+          },
+          updatedDoc
+        );
       }
-      let updatedDoc = {};
-      if (requestedData.member_type != MEMBER.PLAYER) {
-        updatedDoc = { status: FOOTPLAYER_STATUS.REJECTED };
-      } else {
-        console.log("updateedDoc inside else block")
-        updatedDoc = {
-          "send_to.user_id": requestedData.user_id,
-          "send_to.name": `${requestedData.first_name} ${requestedData.last_name}`,
-          "send_to.phone": requestedData.phone,
-          status: FOOTPLAYER_STATUS.PENDING,
-        };
+      else {
+          let footcoachInvite =
+            await this.footCoachUtilityInst.findOneFootRequest({
+              "send_to.email": requestedData.email,
+              status: FOOTPLAYER_STATUS.INVITED,
+            });
+          if (_.isEmpty(footcoachInvite)) {
+            return Promise.resolve();
+          }
+          if (_.isEmpty(footcoachInvite)) {
+            return Promise.resolve();
+          }
+          let updatedDoc = {};
+          if (requestedData.member_type != MEMBER.coach) {
+            updatedDoc = { status: FOOTPLAYER_STATUS.REJECTED };
+          } else {
+            updatedDoc = {
+              "send_to.user_id": requestedData.user_id,
+              "send_to.name": `${requestedData.first_name} ${requestedData.last_name}`,
+              "send_to.phone": requestedData.phone,
+              status: FOOTPLAYER_STATUS.PENDING,
+            };
+          }
+          await this.footCoachUtilityInst.updateMany(
+            {
+              "send_to.email": requestedData.email,
+              status: FOOTPLAYER_STATUS.INVITED,
+            },
+            updatedDoc
+          );
+        
       }
-      console.log("Before Update DOc in UpdateMany Footplayer")
-      console.log("update doc is",updatedDoc)
-      await this.footPlayerUtilityInst.updateMany(
-        {
-          "send_to.email": requestedData.email,
-          status: FOOTPLAYER_STATUS.INVITED,
-        },
-        updatedDoc
-      );
     } catch (e) {
       console.log(e);
       return Promise.reject(e);

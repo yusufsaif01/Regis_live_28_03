@@ -11,6 +11,7 @@ const jwt = require("./configs/jwt.json");
 const storage = require("./configs/storage.json");
 const state_district_storage = require("./configs/state-district-storage.json");
 const vimeo = require('./configs/vimeo.json');
+const mySqlDb = require('./configs/mySqlDb.json')
 
 // Define a schema
 var config = convict({
@@ -25,7 +26,7 @@ var config = convict({
   storage,
   state_district_storage,
   vimeo,
-  
+  mySqlDb,
 });
 
 // Perform validation

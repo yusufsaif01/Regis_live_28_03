@@ -1,0 +1,30 @@
+{
+  "db_host": {
+    "doc": "Database host name/IP",
+    "format": "String",
+    "default": "yftregistration.mysql.database.azure.com",
+    "env": "Mysql_HOST",
+    "arg": "mysql_host"
+  },
+  "db_name": {
+    "doc": "Database name",
+    "format": "String",
+    "default": "yft_registration_in",
+    "env": "MysqlDB_NAME",
+    "arg": "mysqldb_name"
+  },
+  "db_user": {
+    "doc": "Database username",
+    "format": "String",
+    "default": "yftregistration",
+    "env": "DB_MYSQL_USER",
+    "arg": "db_mysql_user"
+  },
+  "db_pass": {
+    "doc": "Database password",
+    "format": "String",
+    "default": "Dyt799@#mysqlServer",
+    "env": "DB__MYSQL_PASSWORD",
+    "arg": "db_mysql_password"
+  }
+}

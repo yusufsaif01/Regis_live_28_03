@@ -37,11 +37,10 @@ class AuthService {
       let loginDetails = await this.loginUtilityInst.findOneAnother({
         username: data,
       });
-    
+
       if (loginDetails) {
-       
         const user_id = loginDetails.user_id;
-       
+
         await this.loginUtilityInst.updateOne(
           { user_id: user_id },
           {
@@ -388,11 +387,9 @@ class AuthService {
   }
 
   async createPassword(email, new_password, confirmPassword) {
-  
     try {
-      
       await this.validateCreatePassword(
-       // tokenData,
+        // tokenData,
         new_password,
         confirmPassword
       );
@@ -406,7 +403,6 @@ class AuthService {
       );
       console.log(`SELECT * FROM login_details WHERE user_id = ${condition}`);
       if (results1) {
-        console.log("result one is*****", results1)
         const playerRole = results1.map((data) => data.role).toString();
         const user_id = results1.map((data) => data.user_id).toString();
         const email1 = results1.map((data) => data.username).toString();
@@ -421,62 +417,55 @@ class AuthService {
             "profile_status.status": ProfileStatus.VERIFIED,
           }
         );
-        
+
         const query = `UPDATE login_details SET password='${password}', forgot_password_token= "", profile_status= '${ProfileStatus.VERIFIED}' where user_id = ${condition}`;
         const [results2, fields] = await conn.query(query);
-      //  await redisServiceInst.deleteByKey(
-       //   `keyForForgotPassword${tokenData.forgot_password_token}`
-      //  );
+        //  await redisServiceInst.deleteByKey(
+        //   `keyForForgotPassword${tokenData.forgot_password_token}`
+        //  );
         let playerName = "";
-        console.log("before if")
-        console.log("playerRole",playerRole)
+
         if (playerRole == ROLE.PLAYER) {
-          
           const [results3, fields] = await conn.execute(
             `Select * FROM player_details where user_id=${condition}`
           );
-          console.log("before if result3", results3);
+
           if (results3) {
-            console.log("inside if result3");
-            let playerDetails =
-              await this.playerUtilityInst.findOneInMongo({
-                email: email,
-              });
+            let playerDetails = await this.playerUtilityInst.findOneInMongo({
+              email: email,
+            });
             playerName = playerDetails.first_name;
-            console.log("fetch from mongodb is000",playerDetails)
-          } else {
-            let clubAcademyDetails =
-              await this.clubAcademyUtilityInst.findOneInMongo({
-                email: email,
-              });
-            if (clubAcademyDetails) {
-              playerName = clubAcademyDetails.name;
-            }
+          }
+        } else {
+          let clubAcademyDetails =
+            await this.clubAcademyUtilityInst.findOneInMongo({
+              email: email,
+            });
+
+          if (clubAcademyDetails) {
+            playerName = clubAcademyDetails.name;
           }
         }
 
+        let serviceInst = new ConnectionService();
 
- let serviceInst = new ConnectionService();
-
-
-   serviceInst.followMember(
-     {
-       sent_by: loginDetails.user_id,
-       send_to: "ea2918d0-5135-4aa2-9e72-8f3db66f35fd",
-     },
-     false
-   );
- console.log("player name after fetch is",playerName)
-
-        this.emailService.welcome(
-          email,
-          playerName,
+        await serviceInst.followMember(
+          {
+            sent_by: loginDetails.user_id,
+            send_to: "ea2918d0-5135-4aa2-9e72-8f3db66f35fd",
+          },
+          false
         );
-        //  this.emailService.postEmailConfirmation({
-        //   email: email,
-        //   name: playerName,
-        // });
-       
+
+        this.emailService.welcome(email, playerName);
+
+        await serviceInst.followMember(
+          {
+            sent_by: "ea2918d0-5135-4aa2-9e72-8f3db66f35fd",
+            send_to: loginDetails.user_id,
+          },
+          false
+        );
         return Promise.resolve();
       }
       throw new errors.Unauthorized(RESPONSE_MESSAGE.USER_NOT_REGISTERED);
@@ -532,12 +521,12 @@ class AuthService {
     }
   }
 
-  validateCreatePassword( password, confirmPassword) {
-   // if (!token) {
+  validateCreatePassword(password, confirmPassword) {
+    // if (!token) {
     //  return Promise.reject(
     //    new errors.ValidationFailed(RESPONSE_MESSAGE.TOKEN_REQUIRED)
     //  );
-   // }
+    // }
 
     if (!password) {
       return Promise.reject(

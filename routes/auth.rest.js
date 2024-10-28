@@ -97,10 +97,8 @@ module.exports = (router) => {
 	 *
 	 */
 	router.post('/login', function (req, res) {
-		console.log("loggeddddd");
 		const authServiceInst = new AuthService();
 		responseHandler(req, res, authServiceInst.login(req.body.email, req.body.password));
-		
 	});
 	/**
 * @api {put} /activate email verification
@@ -135,7 +133,6 @@ module.exports = (router) => {
 * 
 */
 	router.put('/activateemail', function (req, res, next) {
-		
 		const authServiceInst = new AuthService();
 		responseHandler(req, res, authServiceInst.emailVerification(req.body.email));
 	})
