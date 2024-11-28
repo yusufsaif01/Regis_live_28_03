@@ -189,7 +189,7 @@ class BaseUtility {
         .lean();
       console.log("data from mongoDb is", data);
       const res = Object.assign({}, ...result);
-      res.avatar_url = data.avatar_url;
+      //res.avatar_url = data.avatar_url;
       res.strong_foot = data.strong_foot;
       res.association = data.association;
       res.weak_foot = data.weak_foot;
@@ -359,19 +359,12 @@ class BaseUtility {
         await this.getModel();
       }
       await this.model.create(record_for_mongoDb);
-
       const modelnameis = await this.model.modelName;
       delete record_for_mysql.opening_days;
       //MySql Database
       const data = record_for_mysql;
       const sql = `INSERT INTO ${modelnameis} SET ?`;
-
       const [result, row] = await conn.query(sql, data, true);
-
-      console.log("data before insert is", record_for_mongoDb);
-
-      console.log("data after insert is", data);
-
       return result;
     } catch (e) {
       console.log(

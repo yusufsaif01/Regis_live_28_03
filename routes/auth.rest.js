@@ -47,7 +47,6 @@ module.exports = (router) => {
 		responseHandler(req, res, serviceInst.memberRegistration(req.body));
 	});
 
-
 	router.post("/otp/verify", function (req, res) {
       console.log(req.body.otp);
 	  console.log(req.body.email);	  

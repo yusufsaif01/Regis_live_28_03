@@ -8,7 +8,7 @@ class Route {
 	loadRoutes(app) {
 		const apiRouter = express.Router();
 		const accessTokenRouter = express.Router();
-
+    
 		authRoutes(apiRouter);
 		memberRoutes(apiRouter);
 		accessToken(accessTokenRouter);

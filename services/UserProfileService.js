@@ -327,9 +327,7 @@ class UserProfileService {
   }
 
   async prepareProfileData(member_type, data) {
-    console.log("inside prepare profiledata");
-    console.log(member_type);
-    console.log(data);
+    
     if (data._category === PROFILE_DETAIL.PROFESSIONAL) {
       if (member_type === MEMBER.PLAYER) {
         let club_academy_details = {
@@ -354,8 +352,7 @@ class UserProfileService {
             }
             if (element.id) {
               let positionUtilityInst = new PositionUtility();
-              console.log("before findone");
-              console.log(element.id);
+             
               const foundPosition = await positionUtilityInst.findOnePosition(
                 { id: element.id },
                 { name: 1 }
