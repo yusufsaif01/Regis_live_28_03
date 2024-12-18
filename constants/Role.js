@@ -14,6 +14,9 @@ class Role {
   static get ACADEMY() {
     return "academy";
   }
+  static get PARENT() {
+    return "parent";
+  }
 }
 
 module.exports = Role;

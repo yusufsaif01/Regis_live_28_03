@@ -2,6 +2,7 @@ const config = require("../config");
 const AuthUtility = require("../db/utilities/AuthUtility");
 const UserUtility = require("../db/utilities/UserUtility");
 const PlayerUtility = require("../db/utilities/PlayerUtility");
+const ParentUtility = require("../db/utilities/ParentUtility");
 const CoacheUtility = require("../db/utilities/CoacheUtility");
 const LoginUtility = require("../db/utilities/LoginUtility");
 const ClubAcademyUtility = require("../db/utilities/ClubAcademyUtility");
@@ -47,6 +48,7 @@ class UserProfileService {
     this.coachTraningStyleUtilityInst = new CoachTraningStyleUtility();
     this.coachSpecilisationUtilityInst = new CoachSpecilisationUtility();
     this.authUtilityInst = new AuthUtility();
+    this.parentUtilityInst = new ParentUtility();
     this.userUtilityInst = new UserUtility();
     this.playerUtilityInst = new PlayerUtility();
     this.clubAcademyUtilityInst = new ClubAcademyUtility();
@@ -90,6 +92,13 @@ class UserProfileService {
     if (requestedData.member_type == MEMBER.PLAYER) {
       console.log("inside profile member");
       await this.playerUtilityInst.updateOneProfile(
+        { user_id: requestedData.id },
+        profileData
+      );
+    }
+    else if(requestedData.member_type == MEMBER.PARENT) {
+      console.log("inside Parent profile update");
+      await this.parentUtilityInst.updateOneProfile(
         { user_id: requestedData.id },
         profileData
       );

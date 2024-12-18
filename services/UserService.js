@@ -1,6 +1,7 @@
 const Promise = require("bluebird");
 const errors = require("../errors");
 const PlayerUtility = require("../db/utilities/PlayerUtility");
+const ParentUtility = require("../db/utilities/ParentUtility");
 const coacheUtility = require("../db/utilities/CoacheUtility");
 const ClubAcademyUtility = require("../db/utilities/ClubAcademyUtility");
 const AuthUtility = require("../db/utilities/AuthUtility");
@@ -28,6 +29,7 @@ class UserService extends BaseService {
   constructor() {
     super();
     this.playerUtilityInst = new PlayerUtility();
+    this.parentUtilityInst = new ParentUtility();
     this.coacheUtilityInst = new coacheUtility();
     this.clubAcademyUtilityInst = new ClubAcademyUtility();
     this.achievementUtilityInst = new AchievementUtility();
@@ -362,6 +364,11 @@ class UserService extends BaseService {
             { user_id: user },
             projection
           );
+        } else if (loginDetails.member_type == MEMBER.PARENT) {
+          data = await this.parentUtilityInst.findOneForProfileFetch(
+            { user_id: user },
+            projection
+          );
         } else if (loginDetails.member_type == MEMBER.coach) {
           data = await this.coacheUtilityInst.findOneForProfileFetch(
             { user_id: user },
@@ -444,7 +451,11 @@ class UserService extends BaseService {
             data.bio = bio;
           }
 
-          if (data.member_type == "player" || data.member_type == "coach") {
+          if (
+            data.member_type == "player" ||
+            data.member_type == "coach" ||
+            data.member_type == "parent"
+          ) {
             var first_name =
               decipher_for_first_name.update(data.first_name, "hex", "utf8") +
               decipher_for_first_name.final("utf8");

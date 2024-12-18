@@ -34,6 +34,7 @@ class AuthService {
   }
   async emailVerification(data) {
     try {
+      console.log("data inside emailVerification",data)
       let loginDetails = await this.loginUtilityInst.findOneAnother({
         username: data,
       });

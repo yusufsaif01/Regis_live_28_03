@@ -2,6 +2,7 @@ const Promise = require("bluebird");
 const errors = require("../errors");
 const LoginUtility = require("../db/utilities/LoginUtility");
 const PlayerUtility = require("../db/utilities/PlayerUtility");
+const ParentUtility = require("../db/utilities/ParentUtility");
 const coacheUtility = require("../db/utilities/CoacheUtility");
 const ClubAcademyUtility = require("../db/utilities/ClubAcademyUtility");
 const UserService = require("./UserService");
@@ -45,6 +46,7 @@ class UserRegistrationService extends UserService {
   constructor() {
     super();
     this.playerUtilityInst = new PlayerUtility();
+    this.parentUtilityInst = new ParentUtility();
     this.coacheUtilityInst = new coacheUtility();
     this.clubAcademyUtilityInst = new ClubAcademyUtility();
     this.loginUtilityInst = new LoginUtility();
@@ -147,7 +149,8 @@ class UserRegistrationService extends UserService {
       var dataObj = {};
       if (
         userData.member_type == MEMBER.PLAYER ||
-        userData.member_type == MEMBER.coach
+        userData.member_type == MEMBER.coach ||
+        userData.member_type == MEMBER.PARENT
       ) {
         var enc_first_name =
           cipher_for_fisrt_name.update(userData.first_name, "utf8", "hex") +
@@ -204,10 +207,16 @@ class UserRegistrationService extends UserService {
         await this.playerUtilityInst.insert(dataObj, dataObjForMongo);
       } else if (userData.member_type == MEMBER.coach) {
         userData.dob = moment(userData.dob).format("YYYY-MM-DD");
-         const player_type = await this.getPlayerTypeFromDOB(userData.dob);
-         dataObj.player_type = player_type;
-         dataObjForMongo.player_type = player_type;
+        const player_type = await this.getPlayerTypeFromDOB(userData.dob);
+        dataObj.player_type = player_type;
+        dataObjForMongo.player_type = player_type;
         await this.coacheUtilityInst.insert(dataObj, dataObjForMongo);
+      } else if (userData.member_type == MEMBER.PARENT) {
+        userData.dob = moment(userData.dob).format("YYYY-MM-DD");
+        const player_type = await this.getPlayerTypeFromDOB(userData.dob);
+        dataObj.player_type = player_type;
+        dataObjForMongo.player_type = player_type;
+        await this.parentUtilityInst.insert(dataObj, dataObjForMongo);
       } else {
         dataObj.name = enc_name;
         await this.clubAcademyUtilityInst.insert(dataObj, dataObjForMongo);

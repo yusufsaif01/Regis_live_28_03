@@ -11,6 +11,9 @@ class MemberType {
   static get coach() {
     return "coach";
   }
+  static get PARENT() {
+    return "parent";
+  }
 }
 
 module.exports = MemberType;

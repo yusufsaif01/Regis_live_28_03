@@ -131,10 +131,15 @@ module.exports = (router) => {
 *     }
 * 
 */
-	router.put('/activateemail', function (req, res, next) {
+	router.put("/activate", function (req, res, next) {
 		const authServiceInst = new AuthService();
-		responseHandler(req, res, authServiceInst.emailVerification(req.body.email));
-	})
+		console.log("request come here in registration / active mail",req)
+    responseHandler(
+      req,
+      res,
+      authServiceInst.emailVerification(req.body.email)
+    );
+  });
 	
 	/**
 	* @api {post} /create-password create password 
