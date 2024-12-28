@@ -5,6 +5,7 @@ var crypto = require("crypto");
 const fs = require("fs");
 var path = require("path");
 var conn = require("../ConnectionMysql");
+const { resolve } = require("bluebird");
 
 class BaseUtility {
   constructor(schemaObj) {
@@ -40,7 +41,7 @@ class BaseUtility {
         await this.getModel();
       }
       conditions.deleted_at = { $exists: false };
-      console.log("conditions issss", conditions);
+      
       projection = !_.isEmpty(projection) ? projection : { _id: 0, __v: 0 };
       let result = await this.model
         .findOne(conditions, projection, options)
@@ -126,7 +127,7 @@ class BaseUtility {
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-      console.log("final result is==>", data);
+      
       return data;
     } catch (e) {
       console.log(
@@ -167,7 +168,7 @@ class BaseUtility {
     }
   }
 
-  async findOneGetPublicProfileDetails(
+  async findOnePublicProfileDetails(
     conditions = {},
     projection = [],
     options = {}
@@ -182,27 +183,39 @@ class BaseUtility {
       const modelnameis = await this.model.modelName;
 
       const sql = `Select * FROM ${modelnameis} where ?`;
-      const [result, fields] = await conn.query(sql, conditions);
+      const [result] = await conn.query(sql, conditions);
 
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-      console.log("data from mongoDb is", data);
+      console.log("datatatatatatatatatata",data)
+      
       const res = Object.assign({}, ...result);
       //res.avatar_url = data.avatar_url;
-      res.strong_foot = data.strong_foot;
-      res.association = data.association;
-      res.weak_foot = data.weak_foot;
-      res.former_club_academy = data.former_club_academy;
-      res.associated_clud_academy = data.associated_club_academy;
-      res.position = data.position;
-      res.trophies = data.trophies;
-      res.top_signings = data.top_signings;
-      res.type = data.type;
-      res.createdAt = data.createdAt;
-      res.deleted_at= data.deleted_at
-      //res.phone=data.phone
       
+        res.strong_foot = data.strong_foot;
+        res.association = data.association;
+        res.weak_foot = data.weak_foot;
+        res.former_club_academy = data.former_club_academy;
+        res.associated_clud_academy = data.associated_club_academy;
+        res.position = data.position;
+        res.trophies = data.trophies;
+        res.top_signings = data.top_signings;
+        res.type = data.type;
+        res.createdAt = data.createdAt;
+        res.deleted_at = data.deleted_at;
+      
+      //res.phone=data.phone
+     
+         res.current_role = data.current_role;
+         res.year_of_exp = data.year_of_exp;
+         res.academy_name = data.academy_name;
+         res.coache_certificate = data.coache_certificate;
+         res.area_of_spec = data.area_of_spec;
+         res.language = data.language;
+         res.traning_style = data.traning_style;
+    
+     
       return res;
     } catch (e) {
       console.log(
@@ -358,6 +371,7 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
+      console.log("data for mongodb is", record_for_mongoDb);
       await this.model.create(record_for_mongoDb);
       const modelnameis = await this.model.modelName;
       delete record_for_mysql.opening_days;
@@ -369,6 +383,47 @@ class BaseUtility {
     } catch (e) {
       console.log(
         `Error in insert() while inserting data for ${this.schemaObj.schemaName} :: ${e}`
+      );
+      throw e;
+    }
+  }
+
+  async updateTrainingCenter(condition = {}, data = {}) {
+    try {
+      if (!this.model || _.isEmpty(this.model)) {
+        await this.getModel();
+      }
+      console.log("condition is", condition)
+      console.log("Data for MongoDB:", data);
+
+      // MongoDB Update
+      const updateResult = await this.model.updateOne(
+        condition,
+        data
+      );
+      
+      console.log("MongoDB update result:", updateResult);
+
+      // Prepare data for MySQL Update
+      const recordForMySQL = { ...data };
+      delete recordForMySQL.opening_days;
+
+      const modelnameis = await this.model.modelName;
+
+      // MySQL Update Query
+      const sql = `UPDATE ${modelnameis} SET ? WHERE id = ?`;
+      const [result] = await conn.query(sql, [
+        recordForMySQL,
+        recordForMySQL.id,
+      ]);
+      console.log("MySQL update result:", result);
+
+      return result;
+    } catch (e) {
+      console.error(
+        `Error in updateTrainingCenter while processing data for ${this.schemaObj.schemaName}:`,
+        e.message,
+        e.stack
       );
       throw e;
     }
@@ -458,7 +513,7 @@ class BaseUtility {
       throw e;
     }
   }
-  
+
   async updateOne(conditions = {}, updatedDoc = {}, options = {}) {
     try {
       if (_.isEmpty(this.model)) {

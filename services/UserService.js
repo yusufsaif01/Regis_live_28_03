@@ -574,28 +574,32 @@ class UserService extends BaseService {
 
   async getPublicProfileDetails(user_id, sent_by) {
     try {
-      console.log("user id is",user_id)
+      console.log("user id in public profile is 555555555555",user_id)
       let loginDetails =
-        await this.loginUtilityInst.findOneGetPublicProfileDetails({
+        await this.loginUtilityInst.findOne({
           user_id: user_id,
         });
+      console.log("loindetails iss", loginDetails)
       if (loginDetails) {
         let data = {},
           projection = {};
         projection = this.getPublicProfileProjection();
+        
         if (loginDetails.member_type === MEMBER.PLAYER) {
-          data = await this.playerUtilityInst.findOneGetPublicProfileDetails(
+          data = await this.playerUtilityInst.findOnePublicProfileDetails(
             { user_id: user_id },
             projection
           );
         } else if (loginDetails.member_type === MEMBER.coach) {
-          data = await this.coacheUtilityInst.findOneGetPublicProfileDetails(
+          console.log("inside coach Utility public")
+          data = await this.coacheUtilityInst.findOnePublicProfileDetails(
             { user_id: user_id },
             projection
           );
+          console.log("return data for coach is",data)
         } else {
           data =
-            await this.clubAcademyUtilityInst.findOneGetPublicProfileDetails(
+            await this.clubAcademyUtilityInst.findOnePublicProfileDetails(
               { user_id: user_id },
               projection
             );
@@ -610,7 +614,7 @@ class UserService extends BaseService {
 
           data.member_type = loginDetails.member_type;
           data.profile_status = loginDetails.profile_status;
-          console.log("data before decryption is",data)
+          
           var algorithm = "aes256"; // or any other algorithm supported by OpenSSL
           var key = "password";
           var decipher_for_email = crypto.createDecipher(algorithm, key);
@@ -730,10 +734,9 @@ class UserService extends BaseService {
       },
       { followers: 1, _id: 0 }
     );
-    console.log("requested data is isFollowed is=>", requestedData);
-    console.log("inside isFollowed=>", following);
+ 
     if (_.isEmpty(following)) {
-      console.log("inside _isEmpty of isFollowed");
+     
       return false;
     }
     return true;
@@ -744,7 +747,7 @@ class UserService extends BaseService {
       sent_by: requestedData.sent_by,
       send_to: requestedData.send_to,
     });
-    console.log("footMateRequest is",footMateRequest);
+    
     if (!_.isEmpty(footMateRequest)) {
       return CONNECTION_REQUEST.PENDING;
     }
@@ -799,7 +802,15 @@ class UserService extends BaseService {
       league_other: 1,
       association: 1,
       association_other: 1,
-      createdAt:1,
+      createdAt: 1,
+      current_role: 1,
+      year_of_exp: 1,
+      academy_name: 1,
+      coache_certificate: 1,
+      area_of_spec: 1,
+      language: 1,
+      traning_style: 1,
+      
       _id: 0,
     };
   }

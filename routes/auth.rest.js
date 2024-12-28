@@ -58,7 +58,15 @@ module.exports = (router) => {
 	 router.post("/create_traning_center", function (req, res) {
       const serviceInst = new CreateTraningCenterService();
       responseHandler(req, res, serviceInst.createTraningCenter(req.body));
-    });
+	 });
+	
+	// Update training center
+
+	 router.put("/update-training-center", function (req, res) {
+     console.log("data to update training center", req.body);
+     const serviceInst = new CreateTraningCenterService();
+     responseHandler(req, res, serviceInst.updateTraningCenter(req.body));
+   });
 	/**
 	 * @api {post} /login login
 	 * @apiName Login
