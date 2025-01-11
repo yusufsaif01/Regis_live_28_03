@@ -178,10 +178,8 @@ class BaseUtility {
         await this.getModel();
       }
       //conditions.deleted_at = { $exists: false };
-
       projection = !_.isEmpty(projection) ? projection : { _id: 0, __v: 0 };
       const modelnameis = await this.model.modelName;
-
       const sql = `Select * FROM ${modelnameis} where ?`;
       const [result] = await conn.query(sql, conditions);
 
@@ -192,7 +190,7 @@ class BaseUtility {
       
       const res = Object.assign({}, ...result);
       //res.avatar_url = data.avatar_url;
-      
+        res.avatar_url = data.avatar_url;
         res.strong_foot = data.strong_foot;
         res.association = data.association;
         res.weak_foot = data.weak_foot;

@@ -574,12 +574,12 @@ class UserService extends BaseService {
 
   async getPublicProfileDetails(user_id, sent_by) {
     try {
-      console.log("user id in public profile is 555555555555",user_id)
+      
       let loginDetails =
         await this.loginUtilityInst.findOne({
           user_id: user_id,
         });
-      console.log("loindetails iss", loginDetails)
+      
       if (loginDetails) {
         let data = {},
           projection = {};
