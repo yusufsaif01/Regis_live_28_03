@@ -127,8 +127,7 @@ class UserService extends BaseService {
         amateur_count = 0,
         professional_count = 0,
         grassroot_count = 0;
-      console.log("conditions is ====>");
-      console.log(conditions);
+      
       totalRecords = await this.playerUtilityInst.countList(conditions);
       amateur_count = await this.playerUtilityInst.countList({
         ...conditions,
@@ -344,7 +343,7 @@ class UserService extends BaseService {
       let loginDetails = await this.loginUtilityInst.findOneForProfileFetch({
         user_id: user,
       });
-      console.log(loginDetails)
+    
       if (loginDetails) {
         if (loginDetails.is_email_varified !== "true") {
           return responseHandler(
@@ -376,7 +375,7 @@ class UserService extends BaseService {
           );
         } else {
           if (requestedData._category === PROFILE_DETAIL.PROFESSIONAL) {
-            console.log(user);
+           
             data = await this.clubAcademyUtilityInst.findOneProfessionalInMongo(
               { user_id: user },
               projection
@@ -591,12 +590,12 @@ class UserService extends BaseService {
             projection
           );
         } else if (loginDetails.member_type === MEMBER.coach) {
-          console.log("inside coach Utility public")
+          
           data = await this.coacheUtilityInst.findOnePublicProfileDetails(
             { user_id: user_id },
             projection
           );
-          console.log("return data for coach is",data)
+         
         } else {
           data =
             await this.clubAcademyUtilityInst.findOnePublicProfileDetails(
@@ -711,7 +710,7 @@ class UserService extends BaseService {
 
           data.phone = phone;
           data.profile_status = "verified";
-          console.log("data after decryption is",data)
+          
           return data;
         } else {
           return Promise.reject(

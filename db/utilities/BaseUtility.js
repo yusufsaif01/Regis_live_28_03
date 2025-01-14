@@ -25,7 +25,7 @@ class BaseUtility {
 
       projection = !_.isEmpty(projection) ? projection : { _id: 0, __v: 0 };
       let result = await this.model.findOne(conditions, projection, options);
-      console.log("result is", result);
+      
       return result;
     } catch (e) {
       console.log(
@@ -186,8 +186,6 @@ class BaseUtility {
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-      console.log("datatatatatatatatatata",data)
-      
       const res = Object.assign({}, ...result);
       //res.avatar_url = data.avatar_url;
         res.avatar_url = data.avatar_url;
@@ -274,7 +272,7 @@ class BaseUtility {
       //   .lean();
 
       const result1 = Object.assign({}, ...result);
-      console.log(result1);
+     
       return result1;
       //let result = await this.model.findOne(conditions, projection, options).lean();
     } catch (e) {
@@ -311,16 +309,15 @@ class BaseUtility {
 
   async otpVerify(conditions = {}) {
     try {
-      console.log("inside otpVerify");
+     
       const projection = {};
       const options = {};
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
 
-      console.log("condition issssss");
       const result = await this.model.findOne(conditions);
-      console.log("result is", result);
+     
       return result;
     } catch (e) {
       console.log(
@@ -351,11 +348,9 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
-      console.log("record issssss");
-      console.log(record);
+      
       let result = await this.model.create(record);
-      console.log("data after insert is===>");
-      console.log(result);
+      
       return result;
     } catch (e) {
       console.log(
@@ -369,7 +364,7 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
-      console.log("data for mongodb is", record_for_mongoDb);
+      
       await this.model.create(record_for_mongoDb);
       const modelnameis = await this.model.modelName;
       delete record_for_mysql.opening_days;
@@ -391,17 +386,13 @@ class BaseUtility {
       if (!this.model || _.isEmpty(this.model)) {
         await this.getModel();
       }
-      console.log("condition is", condition)
-      console.log("Data for MongoDB:", data);
-
+     
       // MongoDB Update
       const updateResult = await this.model.updateOne(
         condition,
         data
       );
       
-      console.log("MongoDB update result:", updateResult);
-
       // Prepare data for MySQL Update
       const recordForMySQL = { ...data };
       delete recordForMySQL.opening_days;
@@ -414,8 +405,7 @@ class BaseUtility {
         recordForMySQL,
         recordForMySQL.id,
       ]);
-      console.log("MySQL update result:", result);
-
+      
       return result;
     } catch (e) {
       console.error(
@@ -466,9 +456,9 @@ class BaseUtility {
         await this.getModel();
       }
       conditions.deleted_at = { $exists: false };
-      console.log("just befor updateMany Footplayer");
+     
       let result = await this.model.updateMany(conditions, updatedDoc, options);
-      console.log(result);
+      
       return result;
     } catch (e) {
       console.log(
@@ -501,7 +491,7 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
-      console.log("inside updateOneInCoach 000=>", conditions);
+ 
       const results = await this.model.create(conditions);
       return results;
     } catch (e) {
@@ -576,18 +566,13 @@ class BaseUtility {
       }
       conditions.deleted_at = { $exists: false };
 
-      console.log("updateOneProfile Data is=====>", data);
-      console.log("updateOneProfile Condition is=====>", conditions);
       if (data._category === "professional_details") {
         const results = await this.model.updateOne(conditions, data, options);
         return results;
       } else {
         const modelnameis = await this.model.modelName;
         //const isMongoUpdate= await this.model.updateOne(conditions, updatedDoc, options);
-        //console.log("isMongoUpdate",isMongoUpdate)
-
-        console.log("data isssssss insideeeeeeee Updateeeeeeeeee");
-        console.log(data);
+       
         var algorithm = "aes256"; // or any other algorithm supported by OpenSSL
         var key = "password";
         var cipher_for_fisrt_name = crypto.createCipher(algorithm, key);
@@ -660,7 +645,7 @@ class BaseUtility {
           cipher_for_enc_bio.update(data.bio, "utf8", "hex") +
           cipher_for_enc_bio.final("hex");
 
-        console.log("player type is===>", data.player_type);
+       
         const weightis = data.weight ? data.weight : "";
         const collegeis = data.college ? data.college : "";
         const schoolis = data.school ? data.school : "";
@@ -670,10 +655,7 @@ class BaseUtility {
         where user_id = '${conditions.user_id}'`;
 
         const [result, fields] = await conn.execute(sql);
-        console.log("sql condition is========>");
-        console.log(sql);
-        console.log("result issss");
-        console.log(result);
+       
         return result;
       }
     } catch (e) {
@@ -740,7 +722,7 @@ class BaseUtility {
         var cipher_for_mobile_number = crypto.createCipher(algorithm, key);
         var cipher_for_pincode = crypto.createCipher(algorithm, key);
         var cipher_for_stadium_name = crypto.createCipher(algorithm, key);
-        console.log("data in reg", data);
+        
         var enc_name =
           cipher_for_name.update(data.name, "utf8", "hex") +
           cipher_for_name.final("hex");
@@ -782,10 +764,7 @@ class BaseUtility {
       where user_id = '${conditions.user_id}'`;
 
         const [result, fields] = await conn.execute(sql);
-        console.log("sql condition is========>");
-        console.log(sql);
-        console.log("result issss");
-        console.log(result);
+       
         return result;
       } else {
         let mongoInsert = await this.model.updateOne(conditions, data, options);
@@ -807,10 +786,7 @@ class BaseUtility {
       where user_id = '${conditions.user_id}'`;
 
         const [result, fields] = await conn.execute(sql);
-        console.log("sql condition is========>");
-        console.log(sql);
-        console.log("result issss");
-        console.log(result);
+       
         return result;
       }
       //	let result = await this.model.updateOne(conditions, updatedDoc, options);
@@ -861,7 +837,7 @@ class BaseUtility {
           select: toBePopulatedOptions.projection || null,
         })
         .exec();
-      //console.log(data)
+      
       return data;
     } catch (e) {
       console.log(
