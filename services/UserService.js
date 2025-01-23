@@ -590,18 +590,20 @@ class UserService extends BaseService {
             projection
           );
         } else if (loginDetails.member_type === MEMBER.coach) {
-          
           data = await this.coacheUtilityInst.findOnePublicProfileDetails(
             { user_id: user_id },
             projection
           );
-         
+        } else if (loginDetails.member_type === MEMBER.PARENT) {
+          data = await this.parentUtilityInst.findOnePublicProfileDetails(
+            { user_id: user_id },
+            projection
+          );
         } else {
-          data =
-            await this.clubAcademyUtilityInst.findOnePublicProfileDetails(
-              { user_id: user_id },
-              projection
-            );
+          data = await this.clubAcademyUtilityInst.findOnePublicProfileDetails(
+            { user_id: user_id },
+            projection
+          );
         }
         if (!_.isEmpty(data)) {
           data.member_type = loginDetails.member_type;
@@ -673,7 +675,11 @@ class UserService extends BaseService {
             sent_by: sent_by,
             send_to: user_id,
           });
-          if (data.member_type == "player" || data.member_type == "coach") {
+          if (
+            data.member_type == "player" ||
+            data.member_type == "coach" ||
+            data.member_type == "parent"
+          ) {
             var first_name =
               decipher_for_first_name.update(data.first_name, "hex", "utf8") +
               decipher_for_first_name.final("utf8");

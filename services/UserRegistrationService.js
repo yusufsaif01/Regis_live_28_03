@@ -162,7 +162,7 @@ class UserRegistrationService extends UserService {
 
         dataObj.first_name = enc_first_name;
         dataObj.last_name = enc_last_name;
-        dataObj.dob = userData.dob;
+       // dataObj.dob = userData.dob;
         dataObj.player_type = userData.player_type;
       } else {
         var enc_name =
@@ -200,22 +200,22 @@ class UserRegistrationService extends UserService {
       dataObjForMongo.user_id = userData.user_id;
       dataObjForMongo.avatar_url = userData.avatar_url;
       if (userData.member_type == MEMBER.PLAYER) {
-        userData.dob = moment(userData.dob).format("YYYY-MM-DD");
-        const player_type = await this.getPlayerTypeFromDOB(userData.dob);
-        dataObj.player_type = player_type;
-        dataObjForMongo.player_type = player_type;
+        //userData.dob = moment(userData.dob).format("YYYY-MM-DD");
+       // const player_type = await this.getPlayerTypeFromDOB(userData.dob);
+        dataObj.player_type = "amateur";
+        dataObjForMongo.player_type = "amateur";
         await this.playerUtilityInst.insert(dataObj, dataObjForMongo);
       } else if (userData.member_type == MEMBER.coach) {
-        userData.dob = moment(userData.dob).format("YYYY-MM-DD");
-        const player_type = await this.getPlayerTypeFromDOB(userData.dob);
-        dataObj.player_type = player_type;
-        dataObjForMongo.player_type = player_type;
+        // userData.dob = moment(userData.dob).format("YYYY-MM-DD");
+        // const player_type = await this.getPlayerTypeFromDOB(userData.dob);
+        // dataObj.player_type = player_type;
+        // dataObjForMongo.player_type = player_type;
         await this.coacheUtilityInst.insert(dataObj, dataObjForMongo);
       } else if (userData.member_type == MEMBER.PARENT) {
-        userData.dob = moment(userData.dob).format("YYYY-MM-DD");
-        const player_type = await this.getPlayerTypeFromDOB(userData.dob);
-        dataObj.player_type = player_type;
-        dataObjForMongo.player_type = player_type;
+        // userData.dob = moment(userData.dob).format("YYYY-MM-DD");
+        // const player_type = await this.getPlayerTypeFromDOB(userData.dob);
+        // dataObj.player_type = player_type;
+        // dataObjForMongo.player_type = player_type;
         await this.parentUtilityInst.insert(dataObj, dataObjForMongo);
       } else {
         dataObj.name = enc_name;
@@ -272,6 +272,7 @@ class UserRegistrationService extends UserService {
         email: userData.email,
         name: userData.first_name || userData.name,
       };
+      console.log("return response is",response)
       return response;
       return Promise.resolve();
     } catch (e) {
