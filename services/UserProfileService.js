@@ -142,10 +142,17 @@ class UserProfileService {
       }
       
     } else {
-      await this.clubAcademyUtilityInst.updateOneProfileClub(
-        { user_id: requestedData.id },
-        profileData
-      );
+      console.log("inside update clubacademy", requestedData.id, profileData)
+      if (
+        profileData.association === "Others" &&
+        !profileData.association_other
+      ) {
+        profileData.association_other = ""; // Set to empty string if association_other doesn't exist
+      }
+        await this.clubAcademyUtilityInst.updateOneProfileClub(
+          { user_id: requestedData.id },
+          profileData
+        );
     }
   }
 

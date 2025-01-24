@@ -152,7 +152,8 @@ class BaseUtility {
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-
+      console.log("condition is", conditions)
+      console.log("data for findone coach from mongo",data)
       const res = Object.assign({}, ...result);
       if (data !== null) {
         res.avatar_url = data.avatar_url;
@@ -372,6 +373,7 @@ class BaseUtility {
       delete record_for_mysql.opening_days;
       //MySql Database
       const data = record_for_mysql;
+      console.log("record for mysql", data)
       const sql = `INSERT INTO ${modelnameis} SET ?`;
       const [result, row] = await conn.query(sql, data, true);
       return result;
@@ -766,7 +768,7 @@ class BaseUtility {
       where user_id = '${conditions.user_id}'`;
 
         const [result, fields] = await conn.execute(sql);
-       
+       console.log("after update ", result)
         return result;
       } else {
         let mongoInsert = await this.model.updateOne(conditions, data, options);
