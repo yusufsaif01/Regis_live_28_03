@@ -596,6 +596,7 @@ class UserService extends BaseService {
             projection
           );
         } else if (loginDetails.member_type === MEMBER.PARENT) {
+          console.log("inside parentttt", projection)
           data = await this.parentUtilityInst.findOnePublicProfileDetails(
             { user_id: user_id },
             projection

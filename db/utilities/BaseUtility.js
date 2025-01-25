@@ -189,8 +189,7 @@ class BaseUtility {
         .lean();
       const res = Object.assign({}, ...result);
       //res.avatar_url = data.avatar_url;
-      console.log("find data is", data)
-      console.log("condition is", conditions);
+      
         res.avatar_url = data.avatar_url;
         res.strong_foot = data.strong_foot;
         res.association = data.association;
