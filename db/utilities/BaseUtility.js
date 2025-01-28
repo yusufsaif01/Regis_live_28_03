@@ -152,8 +152,7 @@ class BaseUtility {
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-      console.log("condition is", conditions)
-      console.log("data for findone coach from mongo",data)
+     
       const res = Object.assign({}, ...result);
       if (data !== null) {
         res.avatar_url = data.avatar_url;
@@ -187,9 +186,10 @@ class BaseUtility {
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
+      console.log("public data from mongo",data)
       const res = Object.assign({}, ...result);
       //res.avatar_url = data.avatar_url;
-      
+      console.log("recive data from mysqll",res)
         res.avatar_url = data.avatar_url;
         res.strong_foot = data.strong_foot;
         res.association = data.association;
@@ -202,7 +202,7 @@ class BaseUtility {
         res.type = data.type;
         res.createdAt = data.createdAt;
         res.deleted_at = data.deleted_at;
-      
+        res.contact_person = data.contact_person
       //res.phone=data.phone
      
          res.current_role = data.current_role;
@@ -212,7 +212,11 @@ class BaseUtility {
          res.area_of_spec = data.area_of_spec;
          res.language = data.language;
          res.traning_style = data.traning_style;
-    
+
+      delete res.contact_persion_name;
+      delete res.contact_persion_email;
+      delete res.contact_persion_mobile_number;
+      delete res.contact_persion_designation;
      
       return res;
     } catch (e) {
