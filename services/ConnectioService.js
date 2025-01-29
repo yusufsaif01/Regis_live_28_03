@@ -23,7 +23,7 @@ class ConnectionService {
   async followMember(requestedData = {}, isUsedByAcceptRequestFunc) {
     try {
       if (!isUsedByAcceptRequestFunc)
-        await this.followMemberValiation(requestedData);
+      await this.followMemberValiation(requestedData);
       console.log("Inside followMember list");
       console.log("first is", requestedData);
       console.log("Second is", isUsedByAcceptRequestFunc);
@@ -32,18 +32,21 @@ class ConnectionService {
           { user_id: requestedData.sent_by },
           { followings: 1 }
         );
+      console.log("connection_of_sent_by is", connection_of_sent_by);
       let connection_of_send_to =
         await this.connectionUtilityInst.findOneInMongo(
           { user_id: requestedData.send_to },
           { followers: 1 }
         );
-
+        console.log("connection_of_send_to is", connection_of_send_to);
       if (!connection_of_sent_by && !connection_of_send_to) {
+        console.log("inside first 11")
         await this.createConnectionsAddFollwingsAddFollowers(
           requestedData.sent_by,
           requestedData.send_to
         );
       } else if (connection_of_sent_by && !connection_of_send_to) {
+        console.log("inside second 22");
         await this.addFollowings(
           connection_of_sent_by,
           requestedData.sent_by,
@@ -54,6 +57,7 @@ class ConnectionService {
           requestedData.send_to
         );
       } else if (!connection_of_sent_by && connection_of_send_to) {
+        console.log("inside third 3333");
         await this.createConnectionAddFollowings(
           requestedData.sent_by,
           requestedData.send_to
@@ -64,6 +68,7 @@ class ConnectionService {
           connection_of_send_to
         );
       } else {
+        console.log("inside elssesee")
         let following = await this.connectionUtilityInst.findOneInMongo(
           {
             user_id: requestedData.sent_by,
@@ -77,6 +82,7 @@ class ConnectionService {
             requestedData.sent_by,
             requestedData.send_to
           );
+          console.log("before addFollowers listt")
           await this.addFollowers(
             requestedData.sent_by,
             requestedData.send_to,
@@ -117,6 +123,7 @@ class ConnectionService {
   }
 
   async createConnectionsAddFollwingsAddFollowers(sent_by, send_to) {
+    console.log("come here in createConnectionsAddFollwingsAddFollowers", sent_by,send_to);
     let records = [
       { user_id: sent_by, followings: [send_to] },
       { user_id: send_to, followers: [sent_by] },
@@ -137,6 +144,7 @@ class ConnectionService {
   async addFollowers(sent_by, send_to, connection_of_send_to) {
     let followers_of_send_to = connection_of_send_to.followers || [];
     followers_of_send_to.push(sent_by);
+  
     await this.connectionUtilityInst.updateOneInMongo(
       { user_id: send_to, is_deleted: false },
       { followers: followers_of_send_to }

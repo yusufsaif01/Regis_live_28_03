@@ -459,7 +459,6 @@ class AuthService {
         );
 
         this.emailService.welcome(email, playerName);
-
         await serviceInst.followMember(
           {
             sent_by: "ea2918d0-5135-4aa2-9e72-8f3db66f35fd",

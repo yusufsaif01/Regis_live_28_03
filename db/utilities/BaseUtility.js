@@ -482,8 +482,9 @@ class BaseUtility {
       }
       conditions.deleted_at = { $exists: false };
 
-      let result = await this.model.updateOne(conditions, updatedDoc, options);
-
+      let result = await this.model.updateOne(conditions, updatedDoc);
+      
+      console.log("is update in mongo", result)
       return result;
     } catch (e) {
       console.log(
