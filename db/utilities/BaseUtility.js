@@ -370,13 +370,12 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
-      
       await this.model.create(record_for_mongoDb);
       const modelnameis = await this.model.modelName;
       delete record_for_mysql.opening_days;
       //MySql Database
       const data = record_for_mysql;
-      console.log("record for mysql", data)
+     
       const sql = `INSERT INTO ${modelnameis} SET ?`;
       const [result, row] = await conn.query(sql, data, true);
       return result;

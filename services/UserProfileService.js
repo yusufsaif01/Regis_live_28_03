@@ -410,8 +410,7 @@ class UserProfileService {
       if (!_.isEmpty(social_profiles)) data.social_profiles = social_profiles;
       if (data.country && data.state && data.district) {
         let { country, state, district } = data;
-        console.log("before country findone");
-        console.log(country);
+        
         let foundCountry = await this.countryUtilityInst.findOne(
           { id: country },
           { name: 1 }
