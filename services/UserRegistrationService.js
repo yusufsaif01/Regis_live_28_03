@@ -109,19 +109,19 @@ class UserRegistrationService extends UserService {
   
 async memberRegistration(userData) {
   try {
+    const emailLowerCase = userData.email ? userData.email.toLowerCase() : "";
     userData.user_id = uuid();
     userData.avatar_url = config.app.default_avatar_url;
-
     const tokenForAccountActivation = await this.authUtilityInst.getAuthToken(
       userData.user_id,
-      userData.email,
+      emailLowerCase,
       userData.member_type
     );
-
+    
     let loginDetails = await this.loginUtilityInst.insert(
       {
         user_id: userData.user_id,
-        username: userData.email,
+        username: emailLowerCase,
         status: ACCOUNT.PENDING,
         role: userData.member_type,
         member_type: userData.member_type,
@@ -129,7 +129,7 @@ async memberRegistration(userData) {
       },
       {
         user_id: userData.user_id,
-        username: userData.email,
+        username: emailLowerCase,
         status: ACCOUNT.PENDING,
         role: userData.member_type,
         member_type: userData.member_type,
@@ -147,7 +147,10 @@ async memberRegistration(userData) {
       dataObj.name = EncryptionUtility.encrypt(userData.name);
     }
 
-    dataObj.email = EncryptionUtility.encrypt(userData.email);
+    dataObj.email = EncryptionUtility.encrypt(
+      userData.email ? userData.email.toLowerCase() : ""
+    );
+
     dataObj.phone = EncryptionUtility.encrypt(userData.phone);
     dataObj.country_code = userData.country_code;
     dataObj.termsAccepted = userData.termsAccepted;
@@ -156,7 +159,7 @@ async memberRegistration(userData) {
     dataObj.avatar_url = userData.avatar_url;
 
     let dataObjForMongo = {
-      email: userData.email,
+      email: emailLowerCase,
       first_name: userData.first_name,
       last_name: userData.last_name,
       country_code: userData.country_code,
@@ -182,7 +185,7 @@ async memberRegistration(userData) {
 
     await this.updateFootPlayerCollection({
       member_type: userData.member_type,
-      email: userData.email,
+      email: emailLowerCase,
       user_id: userData.user_id,
       first_name: userData.first_name,
       last_name: userData.last_name,
@@ -202,7 +205,7 @@ async memberRegistration(userData) {
     );
 
     let response = {
-      email: userData.email,
+      email: emailLowerCase,
       name: userData.first_name || userData.name,
     };
     console.log("return response is", response);

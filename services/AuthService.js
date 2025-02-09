@@ -34,7 +34,7 @@ class AuthService {
   }
   async emailVerification(data) {
     try {
-      console.log("data inside emailVerification",data)
+      console.log("data inside emailVerification", data);
       let loginDetails = await this.loginUtilityInst.findOneAnother({
         username: data,
       });
@@ -125,7 +125,7 @@ class AuthService {
   async findByCredentials(email, password) {
     try {
       let loginDetails = await this.loginUtilityInst.findOne({
-        username: email,
+        username: email ? email.toLowerCase() : "",
       });
       if (loginDetails) {
         if (loginDetails.status === ACCOUNT.BLOCKED) {
@@ -389,20 +389,23 @@ class AuthService {
 
   async createPassword(email, new_password, confirmPassword) {
     try {
-      await this.validateCreatePassword(
-        // tokenData,
-        new_password,
-        confirmPassword
-      );
+      // Convert email to lowercase before using it
+      const emailLowerCase = email ? email.toLowerCase() : "";
+
+      await this.validateCreatePassword(new_password, confirmPassword);
+
       let loginDetails = await this.loginUtilityInst.findOneInMongo({
-        username: email,
+        username: emailLowerCase,
       });
-      var text = email;
+
+      var text = emailLowerCase;
       var condition = `'${text}'`;
       const [results1, fields] = await conn.execute(
         `SELECT * FROM login_details WHERE username = ${condition}`
       );
+
       console.log(`SELECT * FROM login_details WHERE user_id = ${condition}`);
+
       if (results1) {
         const playerRole = results1.map((data) => data.role).toString();
         const user_id = results1.map((data) => data.user_id).toString();
@@ -421,26 +424,24 @@ class AuthService {
 
         const query = `UPDATE login_details SET password='${password}', forgot_password_token= "", profile_status= '${ProfileStatus.VERIFIED}' where user_id = ${condition}`;
         const [results2, fields] = await conn.query(query);
-        //  await redisServiceInst.deleteByKey(
-        //   `keyForForgotPassword${tokenData.forgot_password_token}`
-        //  );
+
         let playerName = "";
 
         if (playerRole == ROLE.PLAYER) {
           const [results3, fields] = await conn.execute(
-            `Select * FROM player_details where user_id=${condition}`
+            `SELECT * FROM player_details WHERE user_id=${condition}`
           );
 
           if (results3) {
             let playerDetails = await this.playerUtilityInst.findOneInMongo({
-              email: email,
+              email: emailLowerCase, // Use lowercase email
             });
             playerName = playerDetails.first_name;
           }
         } else {
           let clubAcademyDetails =
             await this.clubAcademyUtilityInst.findOneInMongo({
-              email: email,
+              email: emailLowerCase, // Use lowercase email
             });
 
           if (clubAcademyDetails) {
@@ -458,7 +459,7 @@ class AuthService {
           false
         );
 
-        this.emailService.welcome(email, playerName);
+        this.emailService.welcome(emailLowerCase, playerName); // Use lowercase email for sending
         await serviceInst.followMember(
           {
             sent_by: "ea2918d0-5135-4aa2-9e72-8f3db66f35fd",
@@ -466,6 +467,7 @@ class AuthService {
           },
           false
         );
+
         return Promise.resolve();
       }
       throw new errors.Unauthorized(RESPONSE_MESSAGE.USER_NOT_REGISTERED);
