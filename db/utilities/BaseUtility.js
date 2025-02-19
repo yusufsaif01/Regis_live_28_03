@@ -370,6 +370,9 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
+      console.log("data insert for mongodb while registration",
+        record_for_mongoDb
+      )
       await this.model.create(record_for_mongoDb);
       const modelnameis = await this.model.modelName;
       delete record_for_mysql.opening_days;
