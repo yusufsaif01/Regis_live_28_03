@@ -390,7 +390,7 @@ class UserService extends BaseService {
           }
         }
         if (!_.isEmpty(data)) {
-          console.log("data is",data)
+          
           data.member_type = loginDetails.member_type;
           // data.member_type = data.member_type;
           data.profile_status = loginDetails.profile_status;

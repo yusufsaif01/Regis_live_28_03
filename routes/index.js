@@ -4,6 +4,7 @@ const accessToken = require('./access-token.rest');
 const checkAccessToken = require('../middleware/auth/access-token');
 const userProfileRoutes = require("./userProfile.rest");
 const memberRoutes = require("./member.rest");
+const paymentRoutes = require("./payment.rest")
 class Route {
 	loadRoutes(app) {
 		const apiRouter = express.Router();
@@ -13,6 +14,7 @@ class Route {
 		memberRoutes(apiRouter);
 		accessToken(accessTokenRouter);
 		userProfileRoutes(apiRouter);
+		paymentRoutes(apiRouter);
 		app.use("/registration/in/access-token", accessTokenRouter)
 		app.use('/registration/in', checkAccessToken(), apiRouter);
 		app.use("/apidocs", express.static("apidocs/doc"));

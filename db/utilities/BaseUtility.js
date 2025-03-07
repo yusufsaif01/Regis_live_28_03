@@ -25,7 +25,7 @@ class BaseUtility {
 
       projection = !_.isEmpty(projection) ? projection : { _id: 0, __v: 0 };
       let result = await this.model.findOne(conditions, projection, options);
-      
+
       return result;
     } catch (e) {
       console.log(
@@ -41,7 +41,7 @@ class BaseUtility {
         await this.getModel();
       }
       conditions.deleted_at = { $exists: false };
-      
+
       projection = !_.isEmpty(projection) ? projection : { _id: 0, __v: 0 };
       let result = await this.model
         .findOne(conditions, projection, options)
@@ -127,7 +127,7 @@ class BaseUtility {
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-      
+
       return data;
     } catch (e) {
       console.log(
@@ -152,13 +152,12 @@ class BaseUtility {
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-     
+
       const res = Object.assign({}, ...result);
       if (data !== null) {
         res.avatar_url = data.avatar_url;
         res.type = data.type;
       }
-
       return res;
     } catch (e) {
       console.log(
@@ -186,38 +185,38 @@ class BaseUtility {
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
-      console.log("public data from mongo",data)
+      console.log("public data from mongo", data);
       const res = Object.assign({}, ...result);
       //res.avatar_url = data.avatar_url;
-      console.log("recive data from mysqll",res)
-        res.avatar_url = data.avatar_url;
-        res.strong_foot = data.strong_foot;
-        res.association = data.association;
-        res.weak_foot = data.weak_foot;
-        res.former_club_academy = data.former_club_academy;
-        res.associated_clud_academy = data.associated_club_academy;
-        res.position = data.position;
-        res.trophies = data.trophies;
-        res.top_signings = data.top_signings;
-        res.type = data.type;
-        res.createdAt = data.createdAt;
-        res.deleted_at = data.deleted_at;
-        res.contact_person = data.contact_person
+      console.log("recive data from mysqll", res);
+      res.avatar_url = data.avatar_url;
+      res.strong_foot = data.strong_foot;
+      res.association = data.association;
+      res.weak_foot = data.weak_foot;
+      res.former_club_academy = data.former_club_academy;
+      res.associated_clud_academy = data.associated_club_academy;
+      res.position = data.position;
+      res.trophies = data.trophies;
+      res.top_signings = data.top_signings;
+      res.type = data.type;
+      res.createdAt = data.createdAt;
+      res.deleted_at = data.deleted_at;
+      res.contact_person = data.contact_person;
       //res.phone=data.phone
-     
-         res.current_role = data.current_role;
-         res.year_of_exp = data.year_of_exp;
-         res.academy_name = data.academy_name;
-         res.coache_certificate = data.coache_certificate;
-         res.area_of_spec = data.area_of_spec;
-         res.language = data.language;
-         res.traning_style = data.traning_style;
+
+      res.current_role = data.current_role;
+      res.year_of_exp = data.year_of_exp;
+      res.academy_name = data.academy_name;
+      res.coache_certificate = data.coache_certificate;
+      res.area_of_spec = data.area_of_spec;
+      res.language = data.language;
+      res.traning_style = data.traning_style;
 
       delete res.contact_persion_name;
       delete res.contact_persion_email;
       delete res.contact_persion_mobile_number;
       delete res.contact_persion_designation;
-     
+
       return res;
     } catch (e) {
       console.log(
@@ -278,7 +277,7 @@ class BaseUtility {
       //   .lean();
 
       const result1 = Object.assign({}, ...result);
-     
+
       return result1;
       //let result = await this.model.findOne(conditions, projection, options).lean();
     } catch (e) {
@@ -315,7 +314,6 @@ class BaseUtility {
 
   async otpVerify(conditions = {}) {
     try {
-     
       const projection = {};
       const options = {};
       if (_.isEmpty(this.model)) {
@@ -323,7 +321,7 @@ class BaseUtility {
       }
 
       const result = await this.model.findOne(conditions);
-     
+
       return result;
     } catch (e) {
       console.log(
@@ -354,9 +352,9 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
-      
+
       let result = await this.model.create(record);
-      
+
       return result;
     } catch (e) {
       console.log(
@@ -370,18 +368,56 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
-      console.log("data insert for mongodb while registration",
-        record_for_mongoDb
-      )
+
       await this.model.create(record_for_mongoDb);
       const modelnameis = await this.model.modelName;
       delete record_for_mysql.opening_days;
       //MySql Database
       const data = record_for_mysql;
-     
+
       const sql = `INSERT INTO ${modelnameis} SET ?`;
       const [result, row] = await conn.query(sql, data, true);
       return result;
+    } catch (e) {
+      console.log(
+        `Error in insert() while inserting data for ${this.schemaObj.schemaName} :: ${e}`
+      );
+      throw e;
+    }
+  }
+
+  // async insertInSql(data) {
+  //    try {
+  //      if (_.isEmpty(this.model)) {
+  //        await this.getModel();
+  //      }
+  //      const modelnameis = await this.model.modelName;
+  //      const sql = `INSERT INTO ${modelnameis} SET ?`;
+  //      const [result, row] = await conn.query(sql, data, true);
+  //      console.log("check result =>", result)
+  //      return result;
+  //    } catch (e) {
+  //      console.log(
+  //        `Error in insert() while inserting data for ${this.schemaObj.schemaName} :: ${e}`
+  //      );
+  //      throw e;
+  //    }
+  // }
+
+  async insertInSql(dataArray) {
+    try {
+      if (_.isEmpty(this.model)) {
+        await this.getModel();
+      }
+      
+      const modelnameis = await this.model.modelName;
+      const sql = `INSERT INTO ${modelnameis} SET ?`;
+
+      for (const data of dataArray) {
+        await conn.query(sql, data);
+      }
+
+      console.log("All records inserted successfully!");
     } catch (e) {
       console.log(
         `Error in insert() while inserting data for ${this.schemaObj.schemaName} :: ${e}`
@@ -395,13 +431,10 @@ class BaseUtility {
       if (!this.model || _.isEmpty(this.model)) {
         await this.getModel();
       }
-     
+
       // MongoDB Update
-      const updateResult = await this.model.updateOne(
-        condition,
-        data
-      );
-      
+      const updateResult = await this.model.updateOne(condition, data);
+
       // Prepare data for MySQL Update
       const recordForMySQL = { ...data };
       delete recordForMySQL.opening_days;
@@ -414,7 +447,7 @@ class BaseUtility {
         recordForMySQL,
         recordForMySQL.id,
       ]);
-      
+
       return result;
     } catch (e) {
       console.error(
@@ -465,9 +498,9 @@ class BaseUtility {
         await this.getModel();
       }
       conditions.deleted_at = { $exists: false };
-     
+
       let result = await this.model.updateMany(conditions, updatedDoc, options);
-      
+
       return result;
     } catch (e) {
       console.log(
@@ -485,8 +518,8 @@ class BaseUtility {
       conditions.deleted_at = { $exists: false };
 
       let result = await this.model.updateOne(conditions, updatedDoc);
-      
-      console.log("is update in mongo", result)
+
+      console.log("is update in mongo", result);
       return result;
     } catch (e) {
       console.log(
@@ -501,7 +534,7 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
- 
+
       const results = await this.model.create(conditions);
       return results;
     } catch (e) {
@@ -582,7 +615,7 @@ class BaseUtility {
       } else {
         const modelnameis = await this.model.modelName;
         //const isMongoUpdate= await this.model.updateOne(conditions, updatedDoc, options);
-       
+
         var algorithm = "aes256"; // or any other algorithm supported by OpenSSL
         var key = "password";
         var cipher_for_fisrt_name = crypto.createCipher(algorithm, key);
@@ -655,7 +688,6 @@ class BaseUtility {
           cipher_for_enc_bio.update(data.bio, "utf8", "hex") +
           cipher_for_enc_bio.final("hex");
 
-       
         const weightis = data.weight ? data.weight : "";
         const collegeis = data.college ? data.college : "";
         const schoolis = data.school ? data.school : "";
@@ -665,7 +697,7 @@ class BaseUtility {
         where user_id = '${conditions.user_id}'`;
 
         const [result, fields] = await conn.execute(sql);
-       
+
         return result;
       }
     } catch (e) {
@@ -732,7 +764,7 @@ class BaseUtility {
         var cipher_for_mobile_number = crypto.createCipher(algorithm, key);
         var cipher_for_pincode = crypto.createCipher(algorithm, key);
         var cipher_for_stadium_name = crypto.createCipher(algorithm, key);
-        
+
         var enc_name =
           cipher_for_name.update(data.name, "utf8", "hex") +
           cipher_for_name.final("hex");
@@ -774,7 +806,7 @@ class BaseUtility {
       where user_id = '${conditions.user_id}'`;
 
         const [result, fields] = await conn.execute(sql);
-       console.log("after update ", result)
+        console.log("after update ", result);
         return result;
       } else {
         let mongoInsert = await this.model.updateOne(conditions, data, options);
@@ -796,7 +828,7 @@ class BaseUtility {
       where user_id = '${conditions.user_id}'`;
 
         const [result, fields] = await conn.execute(sql);
-       
+
         return result;
       }
       //	let result = await this.model.updateOne(conditions, updatedDoc, options);
@@ -847,7 +879,7 @@ class BaseUtility {
           select: toBePopulatedOptions.projection || null,
         })
         .exec();
-      
+
       return data;
     } catch (e) {
       console.log(
