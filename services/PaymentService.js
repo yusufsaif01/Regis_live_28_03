@@ -45,8 +45,31 @@ class PaymentService {
 
   async changeFeeStatus(data = {}) {
     try {
-      console.log("data in regis is", data)
-      await this.playerFeeStatusUtility.insertInSql(data.body);
+      console.log("data in regis is", data);
+
+      for (const entry of data.body) {
+        const existingRecord =
+          await this.playerFeeStatusUtility.findOneForProfileFetch({
+            player_user_id: entry.player_user_id,
+            parent_user_id: entry.parent_user_id,
+            academy_user_id: entry.academy_user_id,
+          });
+
+        console.log("check existing record", existingRecord);
+
+        if (existingRecord && Object.keys(existingRecord).length > 0) {
+          // Update existing record
+          await this.playerFeeStatusUtility.updateInSql(entry, {
+            player_user_id: entry.player_user_id,
+            parent_user_id: entry.parent_user_id,
+            academy_user_id: entry.academy_user_id,
+          });
+        } else {
+          // Insert new record
+          await this.playerFeeStatusUtility.insertInSql(entry);
+        }
+      }
+
       return Promise.resolve();
     } catch (e) {
       console.log(e);
@@ -88,12 +111,11 @@ class PaymentService {
         };
       }
 
-      // Extract footplayer names
+      // Extract footplayer names and user_ids
       const studentNames = firstQueryResults.map((item) => ({
         name: item.send_to.name,
         user_id: item.send_to.user_id,
       }));
-
 
       // Extract unique user IDs
       const userIds = [
@@ -115,12 +137,14 @@ class PaymentService {
       const secondQueryResults = await this.footPlayerUtilityInst.find({
         "send_to.user_id": { $in: userIds },
       });
+
       // Extract unique sent_by user_ids from secondQueryResults
       const userIdsToCheck = [
         ...new Set(
           secondQueryResults.map((record) => record.sent_by).filter(Boolean)
         ),
       ];
+
       if (!userIdsToCheck.length) {
         return {
           status: false,
@@ -129,7 +153,6 @@ class PaymentService {
       }
 
       // Fetch parent details
-      
       const parentIds = await this.loginUtilityInst.find({
         user_id: { $in: userIdsToCheck },
         role: "parent",
@@ -143,7 +166,7 @@ class PaymentService {
 
       const parentDetails = await this.parentUtilityInst.find(
         { user_id: { $in: parentsIdsExtract } },
-        { first_name: 1, last_name: 1,user_id:1 ,_id: 0 }
+        { first_name: 1, last_name: 1, user_id: 1, _id: 0 }
       );
 
       console.log("Parent details:", parentDetails);
@@ -159,6 +182,7 @@ class PaymentService {
       }
 
       const formatDate = (dateString) => {
+        if (!dateString) return "N/A"; // Handle missing dates
         const date = new Date(dateString);
         return new Intl.DateTimeFormat("en-GB", {
           day: "2-digit",
@@ -167,26 +191,48 @@ class PaymentService {
         }).format(date);
       };
 
-      // Merge responses into a single array of objects
-      console.log("student name is", studentNames);
-      const mergedResponse = studentNames.map((name, index) => ({
-        player: name,
-        parent: {
-          parent_name: parentDetails[index]
-            ? `${parentDetails[index].first_name} ${parentDetails[index].last_name}`
-            : "N/A",
-          parent_user_id: parentDetails[index]
-            ? `${parentDetails[index].user_id}`
-            : "N/A",
-        },
-        payment: {
-          start_date: formatDate(paymentSetup.start_date), // Format date
-          end_date: formatDate(paymentSetup.end_date), // Format date
-          fees: paymentSetup.fees,
-          academy_user_id: paymentSetup.academy_userid,
-        },
-        status: "due",
-      }));
+      console.log("Student names:", studentNames);
+
+      // Fetch fee statuses for each player
+      const mergedResponse = await Promise.all(
+        studentNames.map(async (player, index) => {
+          const parent = parentDetails[index] || {
+            first_name: "N/A",
+            last_name: "N/A",
+            user_id: "N/A",
+          };
+
+          // Fetch fee status for this player-parent-academy combination
+          const feeStatusRecord =
+            await this.playerFeeStatusUtility.findOneForProfileFetch({
+              player_user_id: player.user_id,
+              parent_user_id: parent.user_id,
+              academy_user_id: paymentSetup.academy_userid,
+            });
+
+          console.log("Fee Status Record:", feeStatusRecord);
+
+          return {
+            player,
+            parent: {
+              parent_name: `${parent.first_name} ${parent.last_name}`,
+              parent_user_id: parent.user_id,
+            },
+            payment: {
+              start_date: feeStatusRecord?.start_date
+                ? formatDate(feeStatusRecord.start_date)
+                : formatDate(paymentSetup.start_date),
+              end_date: feeStatusRecord?.end_date
+                ? formatDate(feeStatusRecord.end_date)
+                : formatDate(paymentSetup.end_date),
+              fees: feeStatusRecord?.fees ?? paymentSetup.fees,
+              academy_user_id: paymentSetup.academy_userid,
+            },
+            status: feeStatusRecord?.fee_status || "due", // Use stored fee status or "due" as default
+          };
+        })
+      );
+
       console.log("Merged Response is", mergedResponse);
       return { status: true, records: mergedResponse };
     } catch (e) {

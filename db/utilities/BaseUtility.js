@@ -142,22 +142,32 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
-      //conditions.deleted_at = { $exists: false };
 
       projection = !_.isEmpty(projection) ? projection : { _id: 0, __v: 0 };
       const modelnameis = await this.model.modelName;
 
-      const sql = `Select * FROM ${modelnameis} where ?`;
-      const [result, fields] = await conn.query(sql, conditions);
+      // Constructing WHERE clause properly using AND
+      const whereClause = Object.keys(conditions)
+        .map((key) => `${key} = ?`)
+        .join(" AND ");
+
+      const sql = `SELECT * FROM ${modelnameis} WHERE ${whereClause}`;
+      const values = Object.values(conditions);
+
+      const [result] = await conn.query(sql, values);
+
+      // Use Mongoose only if necessary
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
 
-      const res = Object.assign({}, ...result);
+      // Merge SQL result and Mongoose result (if any)
+      const res = result.length ? result[0] : {};
       if (data !== null) {
         res.avatar_url = data.avatar_url;
         res.type = data.type;
       }
+
       return res;
     } catch (e) {
       console.log(
@@ -409,11 +419,14 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
-      
+
       const modelnameis = await this.model.modelName;
       const sql = `INSERT INTO ${modelnameis} SET ?`;
 
-      for (const data of dataArray) {
+      // Ensure dataArray is always an array
+      const dataList = Array.isArray(dataArray) ? dataArray : [dataArray];
+
+      for (const data of dataList) {
         await conn.query(sql, data);
       }
 
@@ -421,6 +434,45 @@ class BaseUtility {
     } catch (e) {
       console.log(
         `Error in insert() while inserting data for ${this.schemaObj.schemaName} :: ${e}`
+      );
+      throw e;
+    }
+  }
+
+  async updateInSql(updateData, condition) {
+    try {
+      console.log("inside update in sql");
+      if (_.isEmpty(this.model)) {
+        await this.getModel();
+      }
+
+      const modelnameis = await this.model.modelName;
+
+      // Constructing the SET part of the update query dynamically
+      const setClause = Object.keys(updateData)
+        .map((key) => `${key} = ?`)
+        .join(", ");
+
+      // Constructing the WHERE clause dynamically
+      const whereClause = Object.keys(condition)
+        .map((key) => `${key} = ?`)
+        .join(" AND ");
+
+      const sql = `UPDATE ${modelnameis} SET ${setClause} WHERE ${whereClause}`;
+
+      // Values for the query
+      const values = [
+        ...Object.values(updateData),
+        ...Object.values(condition),
+      ];
+
+      // Execute the update query
+      const status = await conn.query(sql, values);
+      console.log(status);
+      console.log("Record updated successfully!");
+    } catch (e) {
+      console.log(
+        `Error in update() while updating data for ${this.schemaObj.schemaName} :: ${e}`
       );
       throw e;
     }
