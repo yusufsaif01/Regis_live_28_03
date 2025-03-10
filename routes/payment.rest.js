@@ -116,4 +116,47 @@ module.exports = (router) => {
     }
   });
 
+  router.get("/parent/child-list/:user_id", async (req, res) => {
+    try {
+      console.log("response in regis", req.params.user_id);
+      let serviceInst = new PaymentService();
+      responseHandler(
+        req,
+        res,
+        serviceInst.parentChildList(req.params.user_id)
+      );
+    } catch (error) {
+      console.error("Error in /payment/setup:", error);
+      // Send appropriate error response
+      return responseHandler(
+        req,
+        res,
+        Promise.reject(error.response?.data || "Internal Server Error")
+      );
+    }
+  });
+
+  router.post("/payment/create-order", async (req, res) => {
+    try {
+      console.log("***********", req.body);
+      let serviceInst = new PaymentService();
+      responseHandler(req, res, serviceInst.createOrder(req.body));
+    } catch (error) {
+      console.error("Error in /payment/setup:", error);
+
+      // Send appropriate error response
+      return responseHandler(
+        req,
+        res,
+        Promise.reject(error.response?.data || "Internal Server Error")
+      );
+    }
+  });
+
+  router.post("/payment-webhook", (req, res) => {
+    console.log("Cashfree Payment Webhook:", req.body);
+    // Verify signature and update payment status in DB
+    res.status(200).send("OK");
+  });
+
 };

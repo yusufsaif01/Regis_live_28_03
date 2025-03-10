@@ -146,22 +146,34 @@ class BaseUtility {
       projection = !_.isEmpty(projection) ? projection : { _id: 0, __v: 0 };
       const modelnameis = await this.model.modelName;
 
-      // Constructing WHERE clause properly using AND
-      const whereClause = Object.keys(conditions)
-        .map((key) => `${key} = ?`)
-        .join(" AND ");
+      let whereClauses = [];
+      let values = [];
 
-      const sql = `SELECT * FROM ${modelnameis} WHERE ${whereClause}`;
-      const values = Object.values(conditions);
+      for (const [key, value] of Object.entries(conditions)) {
+        if (Array.isArray(value) && value.length > 0) {
+          // Properly format array values for MySQL
+          whereClauses.push(`${key} IN (${value.map(() => "?").join(", ")})`);
+          values.push(...value);
+        } else {
+          whereClauses.push(`${key} = ?`);
+          values.push(value);
+        }
+      }
+
+      const whereClause =
+        whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+      const sql = `SELECT * FROM ${modelnameis} ${whereClause} LIMIT 1`;
+
+      console.log("Executing SQL Query:", sql, "with values:", values);
 
       const [result] = await conn.query(sql, values);
 
-      // Use Mongoose only if necessary
+      // Fetch additional data via Mongoose
       const data = await this.model
         .findOne(conditions, projection, options)
         .lean();
 
-      // Merge SQL result and Mongoose result (if any)
+      // Merge SQL and Mongoose results
       const res = result.length ? result[0] : {};
       if (data !== null) {
         res.avatar_url = data.avatar_url;
@@ -170,7 +182,7 @@ class BaseUtility {
 
       return res;
     } catch (e) {
-      console.log(
+      console.error(
         `Error in findOne() while fetching data for ${this.schemaObj.schemaName} :: ${e}`
       );
       throw e;
