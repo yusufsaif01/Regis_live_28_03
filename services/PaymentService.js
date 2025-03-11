@@ -15,6 +15,7 @@ const StateUtility = require("../db/utilities/StateUtility");
 const DistrictUtility = require("../db/utilities/DistrictUtility");
 const PaymentSetupUtility = require("../db/utilities/PaymentSetupUtility");
 const PlayerFeeStatusUtility = require("../db/utilities/PlayerFeeStatusUtility");
+const PlayerPaymentDetailsUtility = require("../db/utilities/PlayerPaymentDetailsUtility")
 const ParentUtility = require("../db/utilities/ParentUtility");
 const axios = require("axios");
 const fetch = require("node-fetch");
@@ -33,6 +34,7 @@ class PaymentService {
     this.districtUtilityInst = new DistrictUtility();
     this.paymentSetupUtilityInst = new PaymentSetupUtility();
     this.playerFeeStatusUtility = new PlayerFeeStatusUtility();
+    this.playerPaymentDetailsUtility = new PlayerPaymentDetailsUtility();
   }
 
   async setupPayment(data = {}) {
@@ -478,48 +480,105 @@ class PaymentService {
     }
   }
 
- 
+  async createOrder(data) {
+    try {
+      console.log("Creating Order...", data.body.order_id);
 
-async createOrder() {
-  try {
-    console.log("Creating Order...");
-
-    const response = await axios.post(
-      "https://sandbox.cashfree.com/pg/orders",
-      {
-        order_id: "89760173" + Date.now(),
-        order_amount: 1,
-        order_currency: "INR",
-        customer_details: {
-          customer_id: "78568" + Date.now(),
-          customer_phone: "7992337665",
-          customer_email: "yusufsaif0@gmail.com",
-          customer_name: "yusuf",
+      const response = await axios.post(
+        "https://sandbox.cashfree.com/pg/orders",
+        {
+          order_id: data.body.order_id,
+          order_amount: 1,
+          order_currency: "INR",
+          customer_details: {
+            customer_id: "78568" + Date.now(),
+            customer_phone: "7992337665",
+            customer_email: "yusufsaif0@gmail.com",
+            customer_name: "yusuf",
+          },
+          order_note: "Payment for services",
+          return_url: "https://test.yftchain.com/",
+          notify_url: "https://yourbackend.com/payment-webhook",
         },
-        order_note: "Payment for services",
-        return_url: "https://test.yftchain.com/",
-        notify_url: "https://yourbackend.com/payment-webhook",
-      },
-      {
-        headers: {
-          "x-client-id": "TEST1047531463e2fc08ea3b45409a3641357401",
-          "x-client-secret":
-            "cfsk_ma_test_b4ee7c703c55bf2b28515cb91ae4f87d_c8eb9553",
-          "x-api-version": "2023-08-01",
-          "Content-Type": "application/json",
-        },
-      }
-    );
+        {
+          headers: {
+            "x-client-id": "TEST1047531463e2fc08ea3b45409a3641357401",
+            "x-client-secret":
+              "cfsk_ma_test_b4ee7c703c55bf2b28515cb91ae4f87d_c8eb9553",
+            "x-api-version": "2023-08-01",
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    console.log("Response from Cashfree:", response.data);
-    return response.data;
-  } catch (error) {
-    console.error("Error creating order:", error.response?.data || error);
-    throw error;
+      console.log("Response from Cashfree:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating order:", error.response?.data || error);
+      throw error;
+    }
   }
-}
+  async getOrderStatus(order_id) {
+  try {
+    const orderId = order_id;
+    const CASHFREE_API_URL = "https://sandbox.cashfree.com/pg/orders/";
+    const response = await axios.get(`${CASHFREE_API_URL}${orderId}`, {
+      headers: {
+        "x-api-version": "2023-08-01",
+        "x-client-id": "TEST1047531463e2fc08ea3b45409a3641357401",
+        "x-client-secret":
+          "cfsk_ma_test_b4ee7c703c55bf2b28515cb91ae4f87d_c8eb9553",
+      },
+    });
 
+    const paymentResponse = response.data;
+  
+    if (paymentResponse.order_status === "PAID") {
+      console.log(`💰 Payment successful! Order ID: ${orderId}`);
+      console.log("✅ Payment Verification Response:", paymentResponse);
 
+      // Prepare the object for MySQL insertion
+      const orderData = {
+        id: uuid(),
+        user_id:uuid(),
+        cf_order_id: paymentResponse.cf_order_id,
+        order_id: paymentResponse.order_id,
+        order_status: paymentResponse.order_status,
+        order_date: new Date(paymentResponse.created_at), // Convert to MySQL-compatible format
+        start_date: null, // Set if applicable
+        end_date: null, // Set if applicable
+        fees: paymentResponse.order_amount,
+        currency: paymentResponse.order_currency,
+        customer_name: paymentResponse.customer_details.customer_name,
+        customer_email: paymentResponse.customer_details.customer_email,
+        customer_phone: paymentResponse.customer_details.customer_phone,
+        customer_user_id: paymentResponse.customer_details.customer_id,
+        parent_user_id: null, // Add if applicable
+        academy_userid: null, // Add if applicable
+      };
+      const isInsert = await this.playerPaymentDetailsUtility.insertInSql(
+        orderData
+      );
+      console.log("isInsert=>", isInsert);
+      return Promise.resolve({
+        message: "Payment verified",
+        data: paymentResponse,
+      });
+    } else {
+      console.log(`❌ Payment not successful for Order ID: ${orderId}`);
+      return Promise.reject({
+        message: "Payment not successful",
+        data: paymentResponse,
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error verifying payment:", error.message);
+    return Promise.reject({
+      message: "Error verifying payment",
+      error: error.message,
+    });
+  }
+ }
 }
 
 module.exports = PaymentService;

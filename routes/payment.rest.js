@@ -158,5 +158,21 @@ module.exports = (router) => {
     // Verify signature and update payment status in DB
     res.status(200).send("OK");
   });
-
+  
+    router.get("/verify/payment/:order_id", async (req, res) => {
+      try {
+        const order_id = req.params.order_id
+        console.log("order_id in regis", req.params.order_id);
+        let serviceInst = new PaymentService();
+        responseHandler(req, res, serviceInst.getOrderStatus(order_id));
+      } catch (error) {
+        console.error("Error in /payment/setup:", error);
+        // Send appropriate error response
+        return responseHandler(
+          req,
+          res,
+          Promise.reject(error.response?.data || "Internal Server Error")
+        );
+      }
+    });
 };
