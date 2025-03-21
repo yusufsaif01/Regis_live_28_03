@@ -164,8 +164,6 @@ class BaseUtility {
         whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
       const sql = `SELECT * FROM ${modelnameis} ${whereClause} LIMIT 1`;
 
-      console.log("Executing SQL Query:", sql, "with values:", values);
-
       const [result] = await conn.query(sql, values);
 
       // Fetch additional data via Mongoose
@@ -184,6 +182,41 @@ class BaseUtility {
     } catch (e) {
       console.error(
         `Error in findOne() while fetching data for ${this.schemaObj.schemaName} :: ${e}`
+      );
+      throw e;
+    }
+  }
+  async findManyFormMysql(conditions = {}) {
+    try {
+      if (_.isEmpty(this.model)) {
+        await this.getModel();
+      }
+
+      const modelnameis = await this.model.modelName;
+
+      let whereClauses = [];
+      let values = [];
+
+      for (const [key, value] of Object.entries(conditions)) {
+        if (Array.isArray(value) && value.length > 0) {
+          whereClauses.push(`${key} IN (${value.map(() => "?").join(", ")})`);
+          values.push(...value);
+        } else {
+          whereClauses.push(`${key} = ?`);
+          values.push(value);
+        }
+      }
+
+      const whereClause =
+        whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+      const sql = `SELECT * FROM ${modelnameis} ${whereClause}`;
+
+      const [results] = await conn.query(sql, values);
+
+      return results; // Return all fetched records
+    } catch (e) {
+      console.error(
+        `Error in findManyForProfileFetch() while fetching data for ${this.schemaObj.schemaName} :: ${e}`
       );
       throw e;
     }
@@ -290,7 +323,7 @@ class BaseUtility {
 
       const modelnameis = await this.model.modelName;
       var emptydata = [];
-
+      console.log("condition in findOneAnother =>", conditions);
       const sql = `Select * FROM ${modelnameis} where ?`;
       const [result, fields] = await conn.query(sql, conditions);
 
@@ -299,7 +332,7 @@ class BaseUtility {
       //   .lean();
 
       const result1 = Object.assign({}, ...result);
-
+      console.log("result from mysql", result1);
       return result1;
       //let result = await this.model.findOne(conditions, projection, options).lean();
     } catch (e) {
@@ -457,7 +490,8 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
-
+      console.log("updated data", updateData);
+      console.log("condition for update", condition);
       const modelnameis = await this.model.modelName;
 
       // Constructing the SET part of the update query dynamically
@@ -477,7 +511,7 @@ class BaseUtility {
         ...Object.values(updateData),
         ...Object.values(condition),
       ];
-
+      console.log("check query", sql, values);
       // Execute the update query
       const status = await conn.query(sql, values);
       console.log(status);

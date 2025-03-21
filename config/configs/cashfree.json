@@ -1,0 +1,24 @@
+{
+    "x_client_id": {
+        "doc": "cashfree client id",
+        "format": "String",
+        "default": "TEST1047531463e2fc08ea3b45409a3641357401",
+        "env": "CLIENT_ID",
+        "arg": "client_id"
+    },
+    "x_client_secret" : {
+        "doc": "cashfree client secret",
+        "format": "String",
+        "default": "cfsk_ma_test_b4ee7c703c55bf2b28515cb91ae4f87d_c8eb9553",
+        "env": "CLIENT_SECRET",
+        "arg": "client_secret"
+    },
+    "x_api_version" : {
+        "doc": "version",
+        "format": "String",
+        "default": "2023-08-01",
+        "env": "VERSION_TYPE",
+        "arg": "version_type"
+    }
+  
+}

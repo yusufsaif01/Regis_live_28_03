@@ -12,6 +12,7 @@ const storage = require("./configs/storage.json");
 const state_district_storage = require("./configs/state-district-storage.json");
 const vimeo = require('./configs/vimeo.json');
 const mySqlDb = require('./configs/mySqlDb.json')
+const cashfree = require('./configs/cashfree.json')
 
 // Define a schema
 var config = convict({
@@ -27,6 +28,7 @@ var config = convict({
   state_district_storage,
   vimeo,
   mySqlDb,
+  cashfree,
 });
 
 // Perform validation

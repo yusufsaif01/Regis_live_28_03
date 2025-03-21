@@ -136,11 +136,10 @@ module.exports = (router) => {
     }
   });
 
-  router.post("/payment/create-order", async (req, res) => {
+  router.post("/payment/create-order/:user_id", async (req, res) => {
     try {
-      console.log("***********", req.body);
       let serviceInst = new PaymentService();
-      responseHandler(req, res, serviceInst.createOrder(req.body));
+      responseHandler(req, res, serviceInst.createOrder(req.body, req.params.user_id));
     } catch (error) {
       console.error("Error in /payment/setup:", error);
 
@@ -159,20 +158,51 @@ module.exports = (router) => {
     res.status(200).send("OK");
   });
   
-    router.get("/verify/payment/:order_id", async (req, res) => {
-      try {
-        const order_id = req.params.order_id
-        console.log("order_id in regis", req.params.order_id);
-        let serviceInst = new PaymentService();
-        responseHandler(req, res, serviceInst.getOrderStatus(order_id));
-      } catch (error) {
-        console.error("Error in /payment/setup:", error);
-        // Send appropriate error response
-        return responseHandler(
-          req,
-          res,
-          Promise.reject(error.response?.data || "Internal Server Error")
+    // router.put("/verify/payment/:order_id", async (req, res) => {
+    //   try {
+    //     const order_id = req.params.order_id
+    //     console.log("order_id in regis", req.params.order_id);
+    //     let serviceInst = new PaymentService();
+    //     responseHandler(req, res, serviceInst.getOrderStatus(order_id, req.body, res));
+    //   } catch (error) {
+    //     console.error("Error in /payment/setup:", error);
+    //     // Send appropriate error response
+    //     return responseHandler(
+    //       req,
+    //       res,
+    //       Promise.reject(error.response?.data || "Internal Server Error")
+    //     );
+    //   }
+    // });
+
+  router.put("/verify/payment/:order_id", async (req, res) => {
+    try {
+      const order_id = req.params.order_id;
+      console.log("order_id in regis", order_id);
+
+      let serviceInst = new PaymentService();
+      const pdfBuffer = await serviceInst.getOrderStatus(
+        order_id,
+        req.body,
+        res
+      );
+
+      if (pdfBuffer instanceof Buffer) {
+        // If response is a PDF, send it directly
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `inline; filename=invoice_${order_id}.pdf`
         );
+        return res.send(pdfBuffer);
       }
-    });
+
+      // Otherwise, use responseHandler
+      //responseHandler(req, res, Promise.resolve(pdfBuffer));
+    } catch (error) {
+      console.error("Error in /verify/payment:", error);
+      return responseHandler(req, res, Promise.reject(error));
+    }
+  });
+
 };

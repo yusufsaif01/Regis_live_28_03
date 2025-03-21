@@ -7,18 +7,17 @@ const uuid = require("uuid/v4");
 const AuthUtility = require("../db/utilities/AuthUtility");
 const EmailService = require("./EmailService");
 const _ = require("lodash");
-const AdminUtility = require("../db/utilities/AdminUtility");
 const FootPlayerUtility = require("../db/utilities/FootPlayerUtility");
-const crypto = require("crypto");
-const CountryUtility = require("../db/utilities/CountryUtility");
-const StateUtility = require("../db/utilities/StateUtility");
-const DistrictUtility = require("../db/utilities/DistrictUtility");
 const PaymentSetupUtility = require("../db/utilities/PaymentSetupUtility");
 const PlayerFeeStatusUtility = require("../db/utilities/PlayerFeeStatusUtility");
-const PlayerPaymentDetailsUtility = require("../db/utilities/PlayerPaymentDetailsUtility")
+const PlayerPaymentDetailsUtility = require("../db/utilities/PlayerPaymentDetailsUtility");
 const ParentUtility = require("../db/utilities/ParentUtility");
 const axios = require("axios");
-const fetch = require("node-fetch");
+const fs = require("fs");
+const path = require("path");
+const PDFDocument = require("pdfkit");
+const config = require("../config");
+
 class PaymentService {
   constructor() {
     this.traningCenterUtilityInst = new TraningCenterUtility();
@@ -26,12 +25,8 @@ class PaymentService {
     this.loginUtilityInst = new LoginUtility();
     this.authUtilityInst = new AuthUtility();
     this.emailService = new EmailService();
-    this.adminUtilityInst = new AdminUtility();
     this.footPlayerUtilityInst = new FootPlayerUtility();
     this.parentUtilityInst = new ParentUtility();
-    this.countryUtilityInst = new CountryUtility();
-    this.stateUtilityInst = new StateUtility();
-    this.districtUtilityInst = new DistrictUtility();
     this.paymentSetupUtilityInst = new PaymentSetupUtility();
     this.playerFeeStatusUtility = new PlayerFeeStatusUtility();
     this.playerPaymentDetailsUtility = new PlayerPaymentDetailsUtility();
@@ -314,187 +309,199 @@ class PaymentService {
 
   async parentChildList(user_id) {
     try {
-      // Fetch footplayer details
+      // Step 1: Fetch child details based on parent ID
       const firstQueryResults = await this.footPlayerUtilityInst.find({
         sent_by: user_id,
       });
 
       if (!firstQueryResults.length) {
-        return {
-          status: false,
-          message: "No records found for sent_by with the specified status",
-        };
+        return { status: false, message: "No records found for sent_by" };
       }
 
-      // Extract children names and user_ids
+      // Extract unique child user IDs & names
       const studentNames = firstQueryResults.map((item) => ({
         name: item.send_to.name,
         user_id: item.send_to.user_id,
       }));
 
-      // Extract children unique user IDs
-      const userIds = [
-        ...new Set(
-          firstQueryResults
-            .map((record) => record.send_to?.user_id)
-            .filter(Boolean)
-        ),
-      ];
+      const userIds = [...new Set(studentNames.map((s) => s.user_id))];
 
       if (!userIds.length) {
-        return {
-          status: false,
-          message: "No user_id found in first query results",
-        };
+        return { status: false, message: "No user_id found in child records" };
       }
 
-      // Fetch academy details related to children
+      // Step 2: Fetch academies associated with these children
       const secondQueryResults = await this.footPlayerUtilityInst.find({
         "send_to.user_id": { $in: userIds },
       });
 
-      console.log("academy details is ", secondQueryResults);
-
-      // Extract academy unique user_id
-      const userIdsToCheck = [
+      const academyUserIds = [
         ...new Set(
           secondQueryResults.map((record) => record.sent_by).filter(Boolean)
         ),
       ];
 
-      if (!userIdsToCheck.length) {
-        return {
-          status: false,
-          message: "No user_id found in second query results",
-        };
+      if (!academyUserIds.length) {
+        return { status: false, message: "No academy user_id found" };
       }
 
-      // Fetch academy/club details
-      const academyIds = await this.loginUtilityInst.find({
-        user_id: { $in: userIdsToCheck },
-
+      // Step 3: Fetch active academies (excluding parents)
+      const activeAcademies = await this.loginUtilityInst.find({
+        user_id: { $in: academyUserIds },
         status: "active",
+        role: { $ne: "parent" },
       });
 
-      console.log("check academy id =>", academyIds);
-      const academyIdsExtract = [
-        ...new Set(academyIds.map((record) => record.user_id).filter(Boolean)),
-      ];
+      const activeAcademyIds = activeAcademies.map((rec) => rec.user_id);
 
-      const academyDetails = await this.clubAcademyUtilityInst.find(
-        { user_id: { $in: academyIdsExtract } },
-        { name: 1, user_id: 1, _id: 0 }
+      // Step 4: Fetch academy details & student-academy relationships in parallel
+      const [academyDetails, studentAcademyMappings] = await Promise.all([
+        this.clubAcademyUtilityInst.find(
+          { user_id: { $in: activeAcademyIds } },
+          { name: 1, user_id: 1, _id: 0 }
+        ),
+        this.footPlayerUtilityInst.find({
+          "send_to.user_id": { $in: userIds },
+          sent_by: { $in: activeAcademyIds },
+        }),
+      ]);
+
+      // Step 5: Fetch Payment Setup (single query for all academies)
+      const paymentSetup = await this.paymentSetupUtilityInst.findManyFormMysql(
+        {
+          academy_userid: activeAcademyIds,
+        }
       );
 
-      console.log("academy details:", academyDetails);
-
-      // Fetch payment setup details
-      const paymentSetup =
-        await this.paymentSetupUtilityInst.findOneForProfileFetch({
-          academy_userid: academyIdsExtract, // Directly pass the array
-        });
-
-      console.log("payment setu check", paymentSetup);
-
-      if (!paymentSetup || Object.keys(paymentSetup).length === 0) {
-        return { status: false, message: "No payment setup found" };
-      }
-
+      // Step 6: Format date utility
       const formatDate = (dateString) => {
-        if (!dateString) return "N/A"; // Handle missing dates
-        const date = new Date(dateString);
+        if (!dateString) return "N/A";
         return new Intl.DateTimeFormat("en-GB", {
           day: "2-digit",
           month: "short",
           year: "numeric",
-        }).format(date);
+        }).format(new Date(dateString));
       };
 
-      console.log("Student names:", studentNames);
-
-      // Fetch fee statuses for each player
+      // Step 7: Merge academy, student, and payment details
       const mergedResponse = await Promise.all(
-        studentNames.map(async (player, index) => {
-          const academy = academyDetails[index] || {
-            name: "N/A",
-            user_id: "N/A",
-          };
+        academyDetails.map(async (academy) => {
+          const studentEntry = studentAcademyMappings.find(
+            (record) => record.sent_by === academy.user_id
+          ) || { send_to: { name: "N/A", user_id: "N/A" } };
 
-          // Fetch fee status for this player-parent-academy combination
-          const feeStatusRecord =
-            await this.playerFeeStatusUtility.findOneForProfileFetch({
-              player_user_id: player.user_id,
-              parent_user_id: academy.user_id,
-              academy_user_id: paymentSetup.academy_userid,
+          const studentName = studentEntry.send_to;
+
+          // Fetch fee status for this specific academy
+          const feeStatusRecordArray =
+            await this.playerFeeStatusUtility.findManyFormMysql({
+              player_user_id: studentName.user_id,
+              academy_user_id: academy.user_id,
             });
 
-          console.log("Fee Status Record:", feeStatusRecord);
+          // If no fee status record found, fallback to payment setup
+          const finalPaymentData = feeStatusRecordArray.length
+            ? feeStatusRecordArray.map((record) => ({
+                start_date: formatDate(record.start_date),
+                end_date: formatDate(record.end_date),
+                fees: record.fees,
+                academy_user_id: record.academy_user_id,
+                status: record.fee_status || "due",
+              }))
+            : paymentSetup
+                .filter((record) => record.academy_userid === academy.user_id)
+                .map((record) => ({
+                  start_date: null,
+                  end_date: null,
+                  fees: record.fees || 0,
+                  academy_user_id: record.academy_userid,
+                  status: "due",
+                }));
 
           return {
-            player,
-            academy: {
-              academy_name: academy.name,
-              academy_user_id: academy.user_id,
+            academy,
+            player: {
+              player_name: studentName.name,
+              player_user_id: studentName.user_id,
             },
-            payment: {
-              start_date: feeStatusRecord?.start_date
-                ? formatDate(feeStatusRecord.start_date)
-                : formatDate(paymentSetup.start_date),
-              end_date: feeStatusRecord?.end_date
-                ? formatDate(feeStatusRecord.end_date)
-                : formatDate(paymentSetup.end_date),
-              fees: feeStatusRecord?.fees ?? paymentSetup.fees,
-              academy_user_id: paymentSetup.academy_userid,
-            },
-            status: feeStatusRecord?.fee_status || "due",
+            payment: finalPaymentData.length
+              ? finalPaymentData
+              : [
+                  {
+                    start_date: null,
+                    end_date: null,
+                    fees: 0,
+                    academy_user_id: academy.user_id,
+                    status: "due",
+                  },
+                ],
           };
         })
       );
 
-      // **Calculate total amount**
-      const totalAmount = mergedResponse.reduce(
-        (sum, item) => sum + parseFloat(item.payment.fees),
-        0
-      );
+      // Step 8: Calculate total fees & GST
+      const Amount = mergedResponse.reduce((sum, item) => {
+        const fee = item.payment.reduce(
+          (acc, pay) => acc + parseFloat(pay.fees || 0),
+          0
+        );
+        return sum + fee;
+      }, 0);
 
-      // **Calculate GST (18%)**
+      const platformFee = (Amount * 2.5) / 100;
+      const totalAmount = Amount + platformFee;
       const gstAmount = (totalAmount * 18) / 100;
-
-      // **Calculate Grand Total (Total Fees + GST)**
       const grandTotal = totalAmount + gstAmount;
 
-      // **Final response with totalAmount, GST, and Grand Total**
-      const finalResponse = {
-        totalAmount: totalAmount.toFixed(2), // Keep 2 decimal places
-        gstAmount: gstAmount.toFixed(2), // Keep 2 decimal places
-        grandTotal: grandTotal.toFixed(2), // Keep 2 decimal places
+      return {
+        totalAmount: Amount.toFixed(2),
+        platformFee: platformFee.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        grandTotal: grandTotal.toFixed(2),
         records: mergedResponse,
       };
-
-      console.log("Final Response:", finalResponse);
-
-      return finalResponse;
-    } catch (e) {
-      console.error("Error in manageFootplayerFees:", e);
-      return Promise.reject(e);
+    } catch (error) {
+      console.error("Error in parentChildList:", error);
+      return Promise.reject(error);
     }
   }
 
-  async createOrder(data) {
+  async createOrder(data, user_id) {
     try {
-      console.log("Creating Order...", data.body.order_id);
+      // 1️ Calculate Total Fees
+      console.log("data recive", data);
+      const totalFees = data.reduce((sum, item) => {
+        const paymentFees = item.payment.reduce(
+          (acc, paymentItem) => acc + parseFloat(paymentItem.fees || 0),
+          0
+        );
+        return sum + paymentFees;
+      }, 0);
+
+      // 2️ Calculate GST (18%)
+      const gstAmount = totalFees * 0.18;
+
+      // 3️ Grand Total (Total Fees + GST)
+      const grandTotal = totalFees + gstAmount;
+
+      const parentDetails = await this.parentUtilityInst.findOne({
+        user_id: user_id,
+      });
+      console.log("parentDetails is", parentDetails);
+      console.log("data inside createOrder", data);
 
       const response = await axios.post(
         "https://sandbox.cashfree.com/pg/orders",
         {
-          order_id: data.body.order_id,
-          order_amount: 1,
+          order_id: "ORDER123" + Date.now(),
+          order_amount: grandTotal,
           order_currency: "INR",
           customer_details: {
-            customer_id: "78568" + Date.now(),
-            customer_phone: "7992337665",
-            customer_email: "yusufsaif0@gmail.com",
-            customer_name: "yusuf",
+            customer_id: parentDetails.user_id,
+            customer_phone: parentDetails.phone,
+            customer_email: parentDetails.email,
+            customer_name:
+              parentDetails.first_name + " " + parentDetails.last_name,
           },
           order_note: "Payment for services",
           return_url: "https://test.yftchain.com/",
@@ -502,10 +509,9 @@ class PaymentService {
         },
         {
           headers: {
-            "x-client-id": "TEST1047531463e2fc08ea3b45409a3641357401",
-            "x-client-secret":
-              "cfsk_ma_test_b4ee7c703c55bf2b28515cb91ae4f87d_c8eb9553",
-            "x-api-version": "2023-08-01",
+            "x-client-id": config.cashfree.x_client_id,
+            "x-client-secret": config.cashfree.x_client_secret,
+            "x-api-version": config.cashfree.x_api_version,
             "Content-Type": "application/json",
           },
         }
@@ -518,67 +524,328 @@ class PaymentService {
       throw error;
     }
   }
-  async getOrderStatus(order_id) {
-  try {
-    const orderId = order_id;
-    const CASHFREE_API_URL = "https://sandbox.cashfree.com/pg/orders/";
-    const response = await axios.get(`${CASHFREE_API_URL}${orderId}`, {
-      headers: {
-        "x-api-version": "2023-08-01",
-        "x-client-id": "TEST1047531463e2fc08ea3b45409a3641357401",
-        "x-client-secret":
-          "cfsk_ma_test_b4ee7c703c55bf2b28515cb91ae4f87d_c8eb9553",
-      },
-    });
 
-    const paymentResponse = response.data;
-  
-    if (paymentResponse.order_status === "PAID") {
-      console.log(`💰 Payment successful! Order ID: ${orderId}`);
-      console.log("✅ Payment Verification Response:", paymentResponse);
+  // async getOrderStatus(order_id, data, res) {
+  //   return new Promise(async (resolve, reject) => {
+  //     try {
+  //       if (!order_id) {
+  //         return reject(new Error("Invalid order ID"));
+  //       }
 
-      // Prepare the object for MySQL insertion
-      const orderData = {
-        id: uuid(),
-        user_id:uuid(),
-        cf_order_id: paymentResponse.cf_order_id,
-        order_id: paymentResponse.order_id,
-        order_status: paymentResponse.order_status,
-        order_date: new Date(paymentResponse.created_at), // Convert to MySQL-compatible format
-        start_date: null, // Set if applicable
-        end_date: null, // Set if applicable
-        fees: paymentResponse.order_amount,
-        currency: paymentResponse.order_currency,
-        customer_name: paymentResponse.customer_details.customer_name,
-        customer_email: paymentResponse.customer_details.customer_email,
-        customer_phone: paymentResponse.customer_details.customer_phone,
-        customer_user_id: paymentResponse.customer_details.customer_id,
-        parent_user_id: null, // Add if applicable
-        academy_userid: null, // Add if applicable
-      };
-      const isInsert = await this.playerPaymentDetailsUtility.insertInSql(
-        orderData
-      );
-      console.log("isInsert=>", isInsert);
-      return Promise.resolve({
-        message: "Payment verified",
-        data: paymentResponse,
-      });
-    } else {
-      console.log(`❌ Payment not successful for Order ID: ${orderId}`);
-      return Promise.reject({
-        message: "Payment not successful",
-        data: paymentResponse,
-      });
-    }
-  } catch (error) {
-    console.error("❌ Error verifying payment:", error.message);
-    return Promise.reject({
-      message: "Error verifying payment",
-      error: error.message,
+  //       console.log("data inside getOrderStatus 0 =>", data);
+  //       console.log("order_id inside 0=>", order_id);
+
+  //       const CASHFREE_API_URL = "https://sandbox.cashfree.com/pg/orders/";
+  //       const response = await axios.get(`${CASHFREE_API_URL}${order_id}`, {
+  //         headers: {
+  //           "x-api-version": config.cashfree.x_api_version,
+  //           "x-client-id": config.cashfree.x_client_id,
+  //           "x-client-secret": config.cashfree.x_client_secret,
+  //         },
+  //       });
+
+  //       const paymentResponse = response.data;
+  //       if (paymentResponse.order_status !== "PAID") {
+  //         return reject({
+  //           message: "Payment not successful",
+  //           data: paymentResponse,
+  //         });
+  //       }
+
+  //       // Prepare order data for database
+  //       const orderData = {
+  //         id: uuid(),
+  //         user_id: uuid(),
+  //         cf_order_id: paymentResponse.cf_order_id,
+  //         order_id: paymentResponse.order_id,
+  //         order_status: paymentResponse.order_status,
+  //         order_date: new Date(paymentResponse.created_at),
+  //         fees: paymentResponse.order_amount,
+  //         currency: paymentResponse.order_currency,
+  //         customer_name: paymentResponse.customer_details.customer_name,
+  //         customer_email: paymentResponse.customer_details.customer_email,
+  //         customer_phone: paymentResponse.customer_details.customer_phone,
+  //         customer_user_id: paymentResponse.customer_details.customer_id,
+  //       };
+
+  //       // Generate PDF Invoice
+  //       const pdfBuffer = await this.generateInvoicePDF(orderData);
+  //       console.log("PDF Buffer generated successfully");
+
+  //       // Save PDF to database (if needed)
+  //       orderData.invoice_pdf = pdfBuffer;
+  //       await this.playerPaymentDetailsUtility.insertInSql(orderData);
+
+  //       // Update fee status for each player
+  //       for (const entry of data) {
+  //         const existingRecord =
+  //           await this.playerFeeStatusUtility.findOneForProfileFetch({
+  //             player_user_id: entry.player.player_user_id,
+  //             academy_user_id: entry.academy.user_id,
+  //           });
+
+  //         if (existingRecord && Object.keys(existingRecord).length > 0) {
+  //           const updateData = { fee_status: "paid" };
+  //           await this.playerFeeStatusUtility.updateInSql(updateData, {
+  //             player_user_id: entry.player.player_user_id,
+  //             academy_user_id: entry.academy.user_id,
+  //           });
+  //         }
+  //       }
+
+  //       // Send PDF as response
+  //       res.setHeader("Content-Type", "application/pdf");
+  //       res.setHeader(
+  //         "Content-Disposition",
+  //         `inline; filename=invoice_${order_id}.pdf`
+  //       );
+  //       res.send(pdfBuffer);
+
+  //       resolve("PDF generated and sent successfully");
+  //     } catch (error) {
+  //       console.error("Error verifying payment:", error.message);
+  //       reject({
+  //         message: "Error verifying payment",
+  //         error: error.message,
+  //       });
+  //     }
+  //   });
+  // }
+
+  async getOrderStatus(order_id, data, res) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        if (!order_id) {
+          return reject(new Error("Invalid order ID"));
+        }
+
+        console.log("data inside getOrderStatus =>", data);
+        console.log("order_id inside =>", order_id);
+
+        const CASHFREE_API_URL = "https://sandbox.cashfree.com/pg/orders/";
+        const response = await axios.get(`${CASHFREE_API_URL}${order_id}`, {
+          headers: {
+            "x-api-version": config.cashfree.x_api_version,
+            "x-client-id": config.cashfree.x_client_id,
+            "x-client-secret": config.cashfree.x_client_secret,
+          },
+        });
+
+        const paymentResponse = response.data;
+        if (paymentResponse.order_status !== "PAID") {
+          return reject({
+            message: "Payment not successful",
+            data: paymentResponse,
+          });
+        }
+
+        // Prepare order data
+        const orderData = {
+          id: uuid(),
+          user_id: uuid(),
+          cf_order_id: paymentResponse.cf_order_id,
+          order_id: paymentResponse.order_id,
+          order_status: paymentResponse.order_status,
+          order_date: new Date(paymentResponse.created_at),
+          fees: paymentResponse.order_amount,
+          currency: paymentResponse.order_currency,
+          customer_name: paymentResponse.customer_details.customer_name,
+          customer_email: paymentResponse.customer_details.customer_email,
+          customer_phone: paymentResponse.customer_details.customer_phone,
+          customer_user_id: paymentResponse.customer_details.customer_id,
+        };
+
+        // Generate PDF
+        const pdfBuffer = await this.generateInvoicePDF(orderData);
+        console.log("PDF Buffer generated successfully");
+
+        // Save PDF to database (optional)
+        orderData.invoice_pdf = pdfBuffer;
+        await this.playerPaymentDetailsUtility.insertInSql(orderData);
+
+        // Update fee status
+        for (const entry of data) {
+          const existingRecord =
+            await this.playerFeeStatusUtility.findOneForProfileFetch({
+              player_user_id: entry.player.player_user_id,
+              academy_user_id: entry.academy.user_id,
+            });
+
+          if (existingRecord && Object.keys(existingRecord).length > 0) {
+            const updateData = { fee_status: "paid" };
+            await this.playerFeeStatusUtility.updateInSql(updateData, {
+              player_user_id: entry.player.player_user_id,
+              academy_user_id: entry.academy.user_id,
+            });
+          }
+        }
+
+        // Return PDF buffer instead of sending response
+        resolve(pdfBuffer);
+      } catch (error) {
+        console.error("Error verifying payment:", error.message);
+        reject({
+          message: "Error verifying payment",
+          error: error.message,
+        });
+      }
     });
   }
- }
+
+  async generateInvoicePDF(orderData) {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 50 });
+        const pdfChunks = [];
+
+        doc.on("data", (chunk) => pdfChunks.push(chunk)); // Collect chunks
+        doc.on("end", () => resolve(Buffer.concat(pdfChunks))); // Convert to Buffer
+
+        // Title
+        doc
+          .fontSize(20)
+          .font("Helvetica-Bold")
+          .text("TAX INVOICE", { align: "center" });
+        doc.moveDown(1);
+
+        // Logo
+        const logoPath = path.join(__dirname, "public", "logo.jpg");
+        if (fs.existsSync(logoPath)) {
+          doc.image(logoPath, 400, 80, { width: 100 });
+        }
+
+        // Customer & Company Details
+        doc
+          .fontSize(10)
+          .font("Helvetica-Bold")
+          .text("Bill To:", 50, 100)
+          .font("Helvetica")
+          .text(`${orderData.customer_name}`, 50, 115)
+          .text(
+            "Second Floor, Plot No 165, F.I.E, Patparganj Industrial Area,",
+            50,
+            130
+          )
+          .text("East Delhi, Delhi, 110092", 50, 145)
+          .font("Helvetica-Bold")
+          .text("GST / PAN - XXXXXXX", 50, 160);
+
+        doc
+          .font("Helvetica-Bold")
+          .text("Provided by:", 400, 180)
+          .font("Helvetica")
+          .text("Decoding Youth Talent Private Limited", 400, 195)
+          .text(
+            "E-895, Third Floor, C R Park, New Delhi, India, 110019",
+            400,
+            220
+          )
+          .font("Helvetica-Bold")
+          .text("GST - 07AAHCD7678R1ZL", 400, 245);
+
+        // Invoice Details
+        doc
+          .font("Helvetica-Bold")
+          .text("Invoice Number:", 50, 180)
+          .font("Helvetica")
+          .text(orderData.order_id, 150, 180)
+          .font("Helvetica-Bold")
+          .text("Place of Supply:", 50, 195)
+          .font("Helvetica")
+          .text("New Delhi", 150, 195)
+          .font("Helvetica-Bold")
+          .text("Payment Date:", 50, 210)
+          .font("Helvetica")
+          .text(new Date(orderData.order_date).toLocaleDateString(), 150, 210);
+
+        // Table Header
+        doc.rect(50, 275, 500, 20).fill("black").stroke();
+        doc
+          .fillColor("white")
+          .font("Helvetica-Bold")
+          .fontSize(10)
+          .text("S.no", 55, 280)
+          .text("Description", 80, 280)
+          .text("Unit Price", 350, 280)
+          .text("Line Total", 450, 280)
+          .fillColor("black");
+
+        // Table Rows
+        let y = 310;
+        doc.font("Helvetica").fontSize(10);
+        doc.text("1", 55, y);
+        doc.text(
+          "YFT X HCL Future Stars Grassroots Football - Striker Sponsorship",
+          80,
+          y
+        );
+        doc.text("₹20,000.00", 350, y);
+        doc.text("₹20,000.00", 450, y);
+
+        // Payment Details
+        doc
+          .font("Helvetica-Bold")
+          .text("Method of payment: Bank transfer", 50, y + 120);
+        doc
+          .font("Helvetica")
+          .text("Bank Name: HDFC Bank", 50, y + 135)
+          .text("Branch Name: SEC 62 GALAXY IT PARK", 50, y + 150)
+          .text(
+            "Account Name: Decoding Youth Talent Private Limited",
+            50,
+            y + 165
+          )
+          .text("Account Number: 50200088996068", 50, y + 180)
+          .text("IFSC Code: HDFC0004392", 50, y + 195);
+
+        // Total Summary
+        doc
+          .font("Helvetica-Bold")
+          .text("Subtotal", 400, y + 165)
+          .text("GST (18%)", 400, y + 180)
+          .text("Total", 400, y + 195);
+
+        doc
+          .font("Helvetica")
+          .text("₹20,000.00", 480, y + 165)
+          .text("₹3,600.00", 480, y + 180)
+          .text("₹23,600.00", 480, y + 195);
+
+        // Footer
+        doc
+          .fontSize(10)
+          .font("Helvetica-Bold")
+          .text("Make all checks payable to", 0, y + 300, { align: "center" });
+        doc.text("Decoding Youth Talent Private Limited", 0, y + 315, {
+          align: "center",
+        });
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .text("Thank you for your business!", 0, y + 330, {
+            align: "center",
+          });
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .text(
+            "E-895, Third Floor, C R Park, New Delhi, India, 110019",
+            0,
+            y + 345,
+            { align: "center" }
+          );
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .text("contact@yftchain.com", 0, y + 360, { align: "center" });
+
+        // Finalize PDF
+        doc.end();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
 }
 
 module.exports = PaymentService;
