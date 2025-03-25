@@ -89,6 +89,15 @@ class ResponseMessage {
   static get PASSWORD_REQUIRED() {
     return "Password is required";
   }
+  static get MPIN_NOT_FOUND() {
+    return "mPin not found";
+  }
+  static get PASSWORD_Length() {
+    return "At least 4 number required";
+  }
+  static get ALREADY_EXISTS() {
+    return "mPIN already exists. Reset required.";
+  }
   static get PASSWORD_ALREADY_CREATED() {
     return "Password already created";
   }

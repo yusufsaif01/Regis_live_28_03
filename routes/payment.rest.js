@@ -278,4 +278,43 @@ module.exports = (router) => {
     }
   });
 
+   router.post("/setup/mpin/:user_id", async (req, res) => {
+     try {
+       let serviceInst = new PaymentService();
+       responseHandler(
+         req,
+         res,
+         serviceInst.createmPinCode(req.body, req.params.user_id)
+       );
+     } catch (error) {
+       console.error("Error in /payment/setup:", error);
+
+       // Send appropriate error response
+       return responseHandler(
+         req,
+         res,
+         Promise.reject(error.response?.data || "Internal Server Error")
+       );
+     }
+   });
+  
+  router.post("/mpin/login/:user_id", async (req, res) => {
+    try {
+      let serviceInst = new PaymentService();
+      responseHandler(
+        req,
+        res,
+        serviceInst.mpinLogin(req.body, req.params.user_id)
+      );
+    } catch (error) {
+      console.error("Error in /payment/setup:", error);
+
+      // Send appropriate error response
+      return responseHandler(
+        req,
+        res,
+        Promise.reject(error.response?.data || "Internal Server Error")
+      );
+    }
+  });
 };

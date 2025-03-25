@@ -13,6 +13,8 @@ const PlayerFeeStatusUtility = require("../db/utilities/PlayerFeeStatusUtility")
 const PlayerPaymentDetailsUtility = require("../db/utilities/PlayerPaymentDetailsUtility");
 const ParentUtility = require("../db/utilities/ParentUtility");
 const PlayerUtility = require("../db/utilities/PlayerUtility");
+const MpinUtility = require("../db/utilities/MpinUtility");
+const RESPONSE_MESSAGE = require("../constants/ResponseMessage");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
@@ -32,6 +34,7 @@ class PaymentService {
     this.playerFeeStatusUtility = new PlayerFeeStatusUtility();
     this.playerPaymentDetailsUtility = new PlayerPaymentDetailsUtility();
     this.PlayerUtilityInst = new PlayerUtility();
+    this.mPinUtilityInst = new MpinUtility();
   }
 
   async setupPayment(data = {}) {
@@ -109,11 +112,24 @@ class PaymentService {
       const res = await this.paymentSetupUtilityInst.findOneForProfileFetch({
         academy_userid: user_id,
       });
-      // Check if data exists and is not an empty object
+
+      // Check if user already has an mPIN
+      let existingMPIN = await this.mPinUtilityInst.findManyFormMysql({
+        academy_user_id: user_id,
+      });
+
+      // Check if data exists
       if (res && Object.keys(res).length > 0) {
-        return Promise.resolve({ status: true });
+        return Promise.resolve({
+          status: true,
+          mpinSet: existingMPIN && existingMPIN.length > 0, // Check if MPIN exists
+        });
       } else {
-        return Promise.resolve({ status: false, message: "No data found" });
+        return Promise.resolve({
+          status: false,
+          message: "No data found",
+          mpinSet: existingMPIN && existingMPIN.length > 0,
+        });
       }
     } catch (e) {
       console.log(e);
@@ -521,26 +537,23 @@ class PaymentService {
             await this.playerFeeStatusUtility.findManyFormMysql({
               player_user_id: studentName.user_id,
               academy_user_id: academy.user_id,
-              
             });
           console.log("feeStatusRecordArray=>", feeStatusRecordArray);
           console.log("paymentSetup==>", paymentSetup);
           // If no fee status record found, fallback to payment setup
-     
 
           const finalPaymentData = feeStatusRecordArray.length
             ? feeStatusRecordArray.map((record) => {
-         const today = new Date();
-         const firstDayOfNextMonth = new Date(
-           today.getFullYear(),
-           today.getMonth() + 1,
-           1
-         );
+                const today = new Date();
+                const firstDayOfNextMonth = new Date(
+                  today.getFullYear(),
+                  today.getMonth() + 1,
+                  1
+                );
 
-         const isBlocked =
-           record.fee_status === "paid" &&
-           new Date(record.end_date) < firstDayOfNextMonth;
-
+                const isBlocked =
+                  record.fee_status === "paid" &&
+                  new Date(record.end_date) < firstDayOfNextMonth;
 
                 return {
                   start_date: formatDate(record.start_date),
@@ -564,12 +577,9 @@ class PaymentService {
 
           console.log(finalPaymentData);
 
+          console.log(finalPaymentData);
 
-            console.log(finalPaymentData);
-
-
-      console.log(finalPaymentData);
-
+          console.log(finalPaymentData);
 
           return {
             academy,
@@ -634,10 +644,10 @@ class PaymentService {
       const platformFee = (Amount * 2.5) / 100;
       const totalAmount = Amount + platformFee;
       const gstAmount = (totalAmount * 18) / 100;
-      
+
       const grandTotal = parseFloat((totalAmount + gstAmount).toFixed(2));
 
-      console.log("grand total is=>", grandTotal)
+      console.log("grand total is=>", grandTotal);
       const parentDetails = await this.parentUtilityInst.findOne({
         user_id: user_id,
       });
@@ -766,7 +776,7 @@ class PaymentService {
   //   });
   // }
 
-  async getOrderStatus(order_id, user_id ,data, res) {
+  async getOrderStatus(order_id, user_id, data, res) {
     return new Promise(async (resolve, reject) => {
       try {
         if (!order_id) {
@@ -818,25 +828,25 @@ class PaymentService {
         await this.playerPaymentDetailsUtility.insertInSql(orderData);
 
         // Update fee status
-       for (const entry of data) {
-         const existingRecord =
-           await this.playerFeeStatusUtility.findOneForProfileFetch({
-             player_user_id: entry.player.player_user_id,
-             academy_user_id: entry.academy.user_id,
-           });
+        for (const entry of data) {
+          const existingRecord =
+            await this.playerFeeStatusUtility.findOneForProfileFetch({
+              player_user_id: entry.player.player_user_id,
+              academy_user_id: entry.academy.user_id,
+            });
 
-         if (existingRecord && Object.keys(existingRecord).length > 0) {
-           // Update existing record
-           const updateData = { fee_status: "paid" };
-           await this.playerFeeStatusUtility.updateInSql(updateData, {
-             player_user_id: entry.player.player_user_id,
-             academy_user_id: entry.academy.user_id,
-           });
-         } else {
-           const paymentDetails =
-             entry.payment.length > 0 ? entry.payment[0] : {};
-           console.log("paymentDetailsss=>", paymentDetails)
-           // Insert new record if not exists
+          if (existingRecord && Object.keys(existingRecord).length > 0) {
+            // Update existing record
+            const updateData = { fee_status: "paid" };
+            await this.playerFeeStatusUtility.updateInSql(updateData, {
+              player_user_id: entry.player.player_user_id,
+              academy_user_id: entry.academy.user_id,
+            });
+          } else {
+            const paymentDetails =
+              entry.payment.length > 0 ? entry.payment[0] : {};
+            console.log("paymentDetailsss=>", paymentDetails);
+            // Insert new record if not exists
             const formatDate = (dateString) => {
               if (!dateString) return "N/A"; // Handle missing dates
               const date = new Date(dateString);
@@ -846,19 +856,18 @@ class PaymentService {
                 year: "numeric",
               }).format(date);
             };
-           const newData = {
-             player_user_id: entry.player.player_user_id,
-             parent_user_id: user_id,
-             academy_user_id: entry.academy.user_id,
-             fee_status: "paid", // Set default fee status
-             start_date: paymentDetails.start_date.split("T")[0] || null,
-             end_date: paymentDetails.end_date.split("T")[0] || null,
-             fees: paymentDetails.fees || null, // Add required fields
-           };
-           await this.playerFeeStatusUtility.insertInSql(newData);
-         }
-       }
-
+            const newData = {
+              player_user_id: entry.player.player_user_id,
+              parent_user_id: user_id,
+              academy_user_id: entry.academy.user_id,
+              fee_status: "paid", // Set default fee status
+              start_date: paymentDetails.start_date.split("T")[0] || null,
+              end_date: paymentDetails.end_date.split("T")[0] || null,
+              fees: paymentDetails.fees || null, // Add required fields
+            };
+            await this.playerFeeStatusUtility.insertInSql(newData);
+          }
+        }
 
         // Return PDF buffer instead of sending response
         resolve(pdfBuffer);
@@ -872,8 +881,10 @@ class PaymentService {
     });
   }
 
-  async generateInvoicePDF(orderData,data) {
-    console.log("orderData in generateInvoicePdf=>",orderData)
+  async generateInvoicePDF(orderData, data) {
+    console.log("orderData in generateInvoicePdf=>", orderData)
+    console.log("data insie generateInvoicePdf=>", data)
+    const totalRecords = data.length;
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ margin: 50 });
@@ -948,20 +959,28 @@ class PaymentService {
           .text("S.no", 55, 280)
           .text("Description", 80, 280)
           .text("Unit Price", 350, 280)
-          .text("Line Total", 450, 280)
+          .text("Total Amount", 450, 280)
           .fillColor("black");
 
         // Table Rows
         let y = 310;
         doc.font("Helvetica").fontSize(10);
-        doc.text("1", 55, y);
-        doc.text(
-          "YFT X HCL Future Stars Grassroots Football - Striker Sponsorship",
-          80,
-          y
-        );
-        doc.text("₹20,000.00", 350, y);
-        doc.text(`${orderData.fees}`, 450, y);
+
+        
+        data.forEach((item, index) => {
+          const academyName = item.academy?.name || "N/A";
+          const playerName = item.player?.player_name || "Unknown Player";
+          const feesArray = item.payment || [];
+
+          feesArray.forEach((payment, i) => {
+            doc.text(`${index + 1}`, 55, y);
+            doc.text(`${academyName}`, 80, y);
+            doc.text(`${playerName}`, 220, y);
+            doc.text(`₹${totalRecords || "0.00"}`, 350, y);
+            doc.text(`₹${orderData.fees || "0.00"}`, 450, y);
+            y += 20;
+          });
+        });
 
         // Payment Details
         doc
@@ -970,8 +989,8 @@ class PaymentService {
         doc
           .font("Helvetica")
           .text(`Order Id: ${orderData.order_id}`, 50, y + 135)
-          .text(`Order Status: ${orderData.order_status}`, 50, y + 150)
-          
+          .text(`Order Status: ${orderData.order_status}`, 50, y + 150);
+
         // Total Summary
         doc
           .font("Helvetica-Bold")
@@ -1019,6 +1038,105 @@ class PaymentService {
         reject(error);
       }
     });
+  }
+
+  async createmPinCode(data, user_id) {
+    try {
+      console.log("data recive for set mpin code", data, user_id);
+      const { password, confirmPassword } = data;
+      await this.validateCreatePassword(password, confirmPassword);
+
+      // Check if user already has an mPIN
+      let existingMPIN = await this.mPinUtilityInst.findManyFormMysql({
+        academy_user_id: user_id,
+      });
+      console.log("--->>>", existingMPIN);
+      if (existingMPIN && existingMPIN.length > 0) {
+        return Promise.reject(
+          new errors.ValidationFailed(RESPONSE_MESSAGE.ALREADY_EXISTS)
+        );
+      }
+      const dataToInsert = {
+        password: data.password,
+        academy_user_id: user_id,
+      };
+      data.academy_user_id = user_id;
+      // Insert into database
+      await this.mPinUtilityInst.insertInSql(dataToInsert);
+
+      //return response.data;
+    } catch (error) {
+      console.error("Error creating order:", error.response?.data || error);
+      throw error;
+    }
+  }
+
+  async mpinLogin(data, user_id) {
+    try {
+      console.log("data recive for set mpin code", data, user_id);
+      const { password } = data;
+      await this.validateLoginPassword(password);
+
+      // Check if user already has an mPIN
+      let existingMPIN = await this.mPinUtilityInst.findManyFormMysql({
+        academy_user_id: user_id,
+        password: password,
+      });
+
+      // Check if the array is empty and return an error
+      if (!existingMPIN || existingMPIN.length === 0) {
+        return Promise.reject(
+          new errors.ValidationFailed(RESPONSE_MESSAGE.MPIN_NOT_FOUND)
+        );
+      }
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Error creating order:", error.response?.data || error);
+      throw error;
+    }
+  }
+
+  validateCreatePassword(password, confirmPassword) {
+    // Validate 4-digit mPIN
+    if (!/^\d{4}$/.test(password)) {
+      return Promise.reject(
+        new errors.ValidationFailed(RESPONSE_MESSAGE.PASSWORD_Length)
+      );
+    }
+
+    if (!password) {
+      return Promise.reject(
+        new errors.ValidationFailed(RESPONSE_MESSAGE.PASSWORD_REQUIRED)
+      );
+    }
+    if (!confirmPassword) {
+      return Promise.reject(
+        new errors.ValidationFailed(RESPONSE_MESSAGE.CONFIRM_PASSWORD_REQUIRED)
+      );
+    }
+    if (password !== confirmPassword) {
+      return Promise.reject(
+        new errors.ValidationFailed(RESPONSE_MESSAGE.PASSWORDS_DO_NOT_MATCH)
+      );
+    }
+    return Promise.resolve();
+  }
+
+  validateLoginPassword(password) {
+    // Validate 4-digit mPIN
+    if (!/^\d{4}$/.test(password)) {
+      return Promise.reject(
+        new errors.ValidationFailed(RESPONSE_MESSAGE.PASSWORD_Length)
+      );
+    }
+
+    if (!password) {
+      return Promise.reject(
+        new errors.ValidationFailed(RESPONSE_MESSAGE.PASSWORD_REQUIRED)
+      );
+    }
+
+    return Promise.resolve();
   }
 }
 

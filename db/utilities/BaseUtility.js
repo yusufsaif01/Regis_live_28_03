@@ -464,6 +464,7 @@ class BaseUtility {
       if (_.isEmpty(this.model)) {
         await this.getModel();
       }
+      console.log("data Array is",dataArray)
 
       const modelnameis = await this.model.modelName;
       const sql = `INSERT INTO ${modelnameis} SET ?`;
