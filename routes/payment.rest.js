@@ -1,6 +1,7 @@
 const responseHandler = require("../ResponseHandler");
 const { checkAuthToken, checkRole } = require("../middleware/auth");
 const PaymentService = require("../services/PaymentService");
+const crypto = require("crypto");
 module.exports = (router) => {
  
   router.post("/payment/setup", async (req, res) => {
@@ -222,12 +223,6 @@ module.exports = (router) => {
       );
     }
   });
-
-  router.post("/payment-webhook", (req, res) => {
-    console.log("Cashfree Payment Webhook:", req.body);
-    // Verify signature and update payment status in DB
-    res.status(200).send("OK");
-  });
   
     // router.put("/verify/payment/:order_id", async (req, res) => {
     //   try {
@@ -317,4 +312,29 @@ module.exports = (router) => {
       );
     }
   });
+
+  router.post("/payment-webhook", async (req, res) => {
+     console.log("---------------------")
+     try {
+       console.log("webshook response in registration=>", req.body)
+        
+       let serviceInst = new PaymentService();
+       responseHandler(
+         req,
+         res,
+         serviceInst.paymentWebhook(req)
+       );
+     } catch (error) {
+       console.error("Error in /payment/setup:", error);
+
+       // Send appropriate error response
+       return responseHandler(
+         req,
+         res,
+         Promise.reject(error.response?.data || "Internal Server Error")
+       );
+     }
+   });
+  
+
 };

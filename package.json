@@ -41,6 +41,7 @@
     "prompts": "^2.2.1",
     "redis": "^3.0.2",
     "redis-promisify": "^0.1.2",
+    "request": "^2.88.2",
     "storage-provider": "file:./storage-provider",
     "uuid": "^3.3.2",
     "vimeo": "^2.3.1",

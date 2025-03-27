@@ -14,12 +14,16 @@ const PlayerPaymentDetailsUtility = require("../db/utilities/PlayerPaymentDetail
 const ParentUtility = require("../db/utilities/ParentUtility");
 const PlayerUtility = require("../db/utilities/PlayerUtility");
 const MpinUtility = require("../db/utilities/MpinUtility");
+const OrderCreateUtility = require("../db/utilities/OrderCreateUtility");
+
+const PaymentRecordUtility = require("../db/utilities/PaymentRecordUtility");
 const RESPONSE_MESSAGE = require("../constants/ResponseMessage");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
 const config = require("../config");
+const crypto = require("crypto");
 
 class PaymentService {
   constructor() {
@@ -35,6 +39,8 @@ class PaymentService {
     this.playerPaymentDetailsUtility = new PlayerPaymentDetailsUtility();
     this.PlayerUtilityInst = new PlayerUtility();
     this.mPinUtilityInst = new MpinUtility();
+    this.paymentRecordUtilityInst = new PaymentRecordUtility();
+    this.orderCreateUtilityInst = new OrderCreateUtility()
   }
 
   async setupPayment(data = {}) {
@@ -538,8 +544,7 @@ class PaymentService {
               player_user_id: studentName.user_id,
               academy_user_id: academy.user_id,
             });
-          console.log("feeStatusRecordArray=>", feeStatusRecordArray);
-          console.log("paymentSetup==>", paymentSetup);
+
           // If no fee status record found, fallback to payment setup
 
           const finalPaymentData = feeStatusRecordArray.length
@@ -574,12 +579,6 @@ class PaymentService {
                   status: "due",
                   block: false, // Default to false for unpaid records
                 }));
-
-          console.log(finalPaymentData);
-
-          console.log(finalPaymentData);
-
-          console.log(finalPaymentData);
 
           return {
             academy,
@@ -629,48 +628,126 @@ class PaymentService {
     }
   }
 
+  // async createOrder(data, user_id) {
+  //   try {
+  //     // 1️ Calculate Total Fees
+  //     console.log("data recive for create order", data);
+  //     const Amount = data.reduce((sum, item) => {
+  //       const paymentFees = item.payment.reduce(
+  //         (acc, paymentItem) => acc + parseFloat(paymentItem.fees || 0),
+  //         0
+  //       );
+  //       return sum + paymentFees;
+  //     }, 0);
+
+  //     const platformFee = (Amount * 2.5) / 100;
+  //     const totalAmount = Amount + platformFee;
+  //     const gstAmount = (totalAmount * 18) / 100;
+
+  //     const grandTotal = parseFloat((totalAmount + gstAmount).toFixed(2));
+
+  //     //console.log("grand total is=>", grandTotal);
+  //     const parentDetails = await this.parentUtilityInst.findOne({
+  //       user_id: user_id,
+  //     });
+  //     // console.log("parentDetails is", parentDetails);
+  //     // console.log("data inside createOrder", data);
+
+  //     const response = await axios.post(
+  //       "https://sandbox.cashfree.com/pg/orders",
+  //       {
+  //         order_id: "order_dyt_yft_" + Date.now(),
+  //         order_amount: grandTotal,
+  //         order_currency: "INR",
+  //         customer_details: {
+  //           customer_id: parentDetails.user_id,
+  //           customer_phone: parentDetails.phone,
+  //           customer_email: parentDetails.email,
+  //           customer_name:
+  //             parentDetails.first_name + " " + parentDetails.last_name,
+  //         },
+  //         order_note: "Payment for services",
+  //         return_url: "https://test.yftchain.com/",
+  //         notify_url: "https://yourbackend.com/payment-webhook",
+  //         order_meta: {
+  //           notify_url: "https://test.yftchain.com/v3/api/payment-webhook",
+  //         },
+  //       },
+  //       {
+  //         headers: {
+  //           "x-client-id": config.cashfree.x_client_id,
+  //           "x-client-secret": config.cashfree.x_client_secret,
+  //           "x-api-version": config.cashfree.x_api_version,
+  //           "Content-Type": "application/json",
+  //         },
+  //       }
+  //     );
+
+  //     //console.log("Response from Cashfree:", response.data);
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error("Error creating order:", error.response?.data || error);
+  //     throw error;
+  //   }
+  // }
+
   async createOrder(data, user_id) {
     try {
-      // 1️ Calculate Total Fees
-      console.log("data recive", data);
-      const Amount = data.reduce((sum, item) => {
-        const paymentFees = item.payment.reduce(
+      console.log("Data received for createOrder:", data);
+
+      // Fetch Parent Details
+      const parentDetails = await this.parentUtilityInst.findOne({ user_id });
+
+      // 1️⃣ Calculate Total Fees for All Players
+      const totalAmount = data.reduce((sum, item) => {
+        const playerFees = item.payment.reduce(
           (acc, paymentItem) => acc + parseFloat(paymentItem.fees || 0),
           0
         );
-        return sum + paymentFees;
+        return sum + playerFees;
       }, 0);
 
-      const platformFee = (Amount * 2.5) / 100;
-      const totalAmount = Amount + platformFee;
-      const gstAmount = (totalAmount * 18) / 100;
+      if (!totalAmount || isNaN(totalAmount)) {
+        console.error("Invalid Total Amount:", totalAmount);
+        throw new Error("Total amount is invalid.");
+      }
 
-      const grandTotal = parseFloat((totalAmount + gstAmount).toFixed(2));
+      const platformFee = (totalAmount * 2.5) / 100;
+      const totalWithFee = totalAmount + platformFee;
+      const gstAmount = (totalWithFee * 18) / 100;
+      const grandTotal = parseFloat((totalWithFee + gstAmount).toFixed(2));
 
-      console.log("grand total is=>", grandTotal);
-      const parentDetails = await this.parentUtilityInst.findOne({
-        user_id: user_id,
-      });
-      console.log("parentDetails is", parentDetails);
-      console.log("data inside createOrder", data);
+      console.log(`Grand Total for all players:`, grandTotal);
 
+      // 2️⃣ Create a Single Order Payload
+      const order_id = `order_dyt_yft_${Date.now()}`;
+
+      const orderPayload = {
+        order_id: order_id,
+        order_amount: grandTotal,
+        order_currency: "INR",
+        customer_details: {
+          customer_id: parentDetails.user_id,
+          customer_phone: parentDetails.phone,
+          customer_email: parentDetails.email,
+          customer_name: `${parentDetails.first_name} ${parentDetails.last_name}`,
+        },
+        order_note: `Payment for ${data.length} players`,
+        return_url: "https://test.yftchain.com/",
+        notify_url:
+          "https://test.yftchain.com/v3/api/registration/in/payment-webhook",
+        order_meta: {
+          notify_url: "https://test.yftchain.com/v3/api/payment-webhook",
+        },
+      };
+
+      console.log("Order Payload:", JSON.stringify(orderPayload, null, 2));
+      console.log("Sending request to Cashfree...");
+
+      // 3️⃣ Call Cashfree API (Only Once)
       const response = await axios.post(
         "https://sandbox.cashfree.com/pg/orders",
-        {
-          order_id: "ORDER123" + Date.now(),
-          order_amount: grandTotal,
-          order_currency: "INR",
-          customer_details: {
-            customer_id: parentDetails.user_id,
-            customer_phone: parentDetails.phone,
-            customer_email: parentDetails.email,
-            customer_name:
-              parentDetails.first_name + " " + parentDetails.last_name,
-          },
-          order_note: "Payment for services",
-          return_url: "https://test.yftchain.com/",
-          notify_url: "https://yourbackend.com/payment-webhook",
-        },
+        orderPayload,
         {
           headers: {
             "x-client-id": config.cashfree.x_client_id,
@@ -681,100 +758,38 @@ class PaymentService {
         }
       );
 
-      console.log("Response from Cashfree:", response.data);
+      console.log("Cashfree Order Response:", response.data);
+
+      // 4️⃣ Store Order in Database (Linking All Players to One Order)
+      for (const item of data) {
+
+         const Fees = item.payment.reduce(
+        (acc, paymentItem) => acc + parseFloat(paymentItem.fees || 0),
+        0
+    );
+        const data = {
+          order_id: response.data.order_id,
+          parent_user_id: parentDetails.user_id,
+          player_id: item.player.player_user_id,
+          academy_id: item.academy.user_id,
+          fee:Fees,
+          amount: grandTotal, // Store the full amount
+          currency: "INR",
+          payment_status: "PENDING", // Initial status
+          order_date: new Date(),
+        };
+        await this.orderCreateUtilityInst.insertInSql(data);
+        console.log("====>===>", data)
+      }
       return response.data;
     } catch (error) {
-      console.error("Error creating order:", error.response?.data || error);
+      console.error(
+        "Error creating order:",
+        error.response?.data || error.message || error
+      );
       throw error;
     }
   }
-
-  // async getOrderStatus(order_id, data, res) {
-  //   return new Promise(async (resolve, reject) => {
-  //     try {
-  //       if (!order_id) {
-  //         return reject(new Error("Invalid order ID"));
-  //       }
-
-  //       console.log("data inside getOrderStatus 0 =>", data);
-  //       console.log("order_id inside 0=>", order_id);
-
-  //       const CASHFREE_API_URL = "https://sandbox.cashfree.com/pg/orders/";
-  //       const response = await axios.get(`${CASHFREE_API_URL}${order_id}`, {
-  //         headers: {
-  //           "x-api-version": config.cashfree.x_api_version,
-  //           "x-client-id": config.cashfree.x_client_id,
-  //           "x-client-secret": config.cashfree.x_client_secret,
-  //         },
-  //       });
-
-  //       const paymentResponse = response.data;
-  //       if (paymentResponse.order_status !== "PAID") {
-  //         return reject({
-  //           message: "Payment not successful",
-  //           data: paymentResponse,
-  //         });
-  //       }
-
-  //       // Prepare order data for database
-  //       const orderData = {
-  //         id: uuid(),
-  //         user_id: uuid(),
-  //         cf_order_id: paymentResponse.cf_order_id,
-  //         order_id: paymentResponse.order_id,
-  //         order_status: paymentResponse.order_status,
-  //         order_date: new Date(paymentResponse.created_at),
-  //         fees: paymentResponse.order_amount,
-  //         currency: paymentResponse.order_currency,
-  //         customer_name: paymentResponse.customer_details.customer_name,
-  //         customer_email: paymentResponse.customer_details.customer_email,
-  //         customer_phone: paymentResponse.customer_details.customer_phone,
-  //         customer_user_id: paymentResponse.customer_details.customer_id,
-  //       };
-
-  //       // Generate PDF Invoice
-  //       const pdfBuffer = await this.generateInvoicePDF(orderData);
-  //       console.log("PDF Buffer generated successfully");
-
-  //       // Save PDF to database (if needed)
-  //       orderData.invoice_pdf = pdfBuffer;
-  //       await this.playerPaymentDetailsUtility.insertInSql(orderData);
-
-  //       // Update fee status for each player
-  //       for (const entry of data) {
-  //         const existingRecord =
-  //           await this.playerFeeStatusUtility.findOneForProfileFetch({
-  //             player_user_id: entry.player.player_user_id,
-  //             academy_user_id: entry.academy.user_id,
-  //           });
-
-  //         if (existingRecord && Object.keys(existingRecord).length > 0) {
-  //           const updateData = { fee_status: "paid" };
-  //           await this.playerFeeStatusUtility.updateInSql(updateData, {
-  //             player_user_id: entry.player.player_user_id,
-  //             academy_user_id: entry.academy.user_id,
-  //           });
-  //         }
-  //       }
-
-  //       // Send PDF as response
-  //       res.setHeader("Content-Type", "application/pdf");
-  //       res.setHeader(
-  //         "Content-Disposition",
-  //         `inline; filename=invoice_${order_id}.pdf`
-  //       );
-  //       res.send(pdfBuffer);
-
-  //       resolve("PDF generated and sent successfully");
-  //     } catch (error) {
-  //       console.error("Error verifying payment:", error.message);
-  //       reject({
-  //         message: "Error verifying payment",
-  //         error: error.message,
-  //       });
-  //     }
-  //   });
-  // }
 
   async getOrderStatus(order_id, user_id, data, res) {
     return new Promise(async (resolve, reject) => {
@@ -881,9 +896,74 @@ class PaymentService {
     });
   }
 
-  async generateInvoicePDF(orderData, data) {
-    console.log("orderData in generateInvoicePdf=>", orderData)
-    console.log("data insie generateInvoicePdf=>", data)
+  async paymentWebhook(req) {
+    console.log("inside paymentwebhook method");
+    try {
+      console.log("Data received for payment webhook:", req);
+      if (!this.verifyCashfreeSignature(req)) {
+        return Promise.reject(
+          new errors.ValidationFailed(RESPONSE_MESSAGE.INVALID_SIGNATURE)
+        );
+      }
+      const data = req.body; // Extract data from request body
+
+      // Extract necessary details for MySQL insertion
+      const dataToInsert = {
+        id: uuid(),
+        order_id: data.data.order.order_id,
+        order_amount: data.data.order.order_amount,
+        order_currency: data.data.order.order_currency,
+
+        cf_payment_id: data.data.payment.cf_payment_id,
+        payment_status: data.data.payment.payment_status,
+        payment_amount: data.data.payment.payment_amount,
+        payment_currency: data.data.payment.payment_currency,
+        payment_message: data.data.payment.payment_message,
+        payment_time: new Date(data.data.payment.payment_time),
+        payment_group: data.data.payment.payment_group,
+        bank_reference: data.data.payment.bank_reference || null,
+        auth_id: data.data.payment.auth_id || null,
+
+        payment_method: JSON.stringify(data.data.payment.payment_method), // Store as JSON
+        payment_user_id: data.data.customer_details.customer_id,
+
+        customer_id: data.data.customer_details.customer_id,
+        customer_name: data.data.customer_details.customer_name || null,
+        customer_email: data.data.customer_details.customer_email,
+        customer_phone: data.data.customer_details.customer_phone,
+
+        gateway_name: data.data.payment_gateway_details.gateway_name,
+        gateway_order_id: data.data.payment_gateway_details.gateway_order_id,
+        gateway_payment_id:
+          data.data.payment_gateway_details.gateway_payment_id,
+        gateway_order_reference_id:
+          data.data.payment_gateway_details.gateway_order_reference_id,
+        gateway_settlement:
+          data.data.payment_gateway_details.gateway_settlement,
+        gateway_status_code:
+          data.data.payment_gateway_details.gateway_status_code || null,
+
+        payment_offers: JSON.stringify(data.data.payment_offers), // Store as JSON
+
+        event_time: new Date(data.event_time),
+        webhook_type: data.type,
+      };
+
+      console.log("Formatted Data for SQL:", dataToInsert);
+      const pdfBuffer = await this.generateInvoicePDF(dataToInsert);
+      // Save PDF to database (optional)
+      req.body.pdf_invoice = pdfBuffer;
+      // Call the function that inserts data into MySQL
+      await this.paymentRecordUtilityInst.insertInSql(dataToInsert);
+
+      console.log("✅ Data successfully inserted into MySQL.");
+    } catch (error) {
+      console.error("❌ Error processing JSON data:", error);
+    }
+  }
+
+  async generateInvoicePDF(orderData) {
+    console.log("orderData in generateInvoicePdf=>", orderData);
     const totalRecords = data.length;
     return new Promise((resolve, reject) => {
       try {
@@ -966,7 +1046,6 @@ class PaymentService {
         let y = 310;
         doc.font("Helvetica").fontSize(10);
 
-        
         data.forEach((item, index) => {
           const academyName = item.academy?.name || "N/A";
           const playerName = item.player?.player_name || "Unknown Player";
@@ -1095,7 +1174,18 @@ class PaymentService {
       throw error;
     }
   }
+  async verifyCashfreeSignature(req) {
+    const secretKey = config.cashfree.x_client_secret; // Get from Cashfree Dashboard
+    const receivedSignature = req.headers["x-webhook-signature"];
+    const payload = JSON.stringify(req.body);
 
+    const generatedSignature = crypto
+      .createHmac("sha256", secretKey)
+      .update(payload)
+      .digest("base64");
+
+    return receivedSignature === generatedSignature;
+  }
   validateCreatePassword(password, confirmPassword) {
     // Validate 4-digit mPIN
     if (!/^\d{4}$/.test(password)) {

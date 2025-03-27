@@ -95,6 +95,9 @@ class ResponseMessage {
   static get PASSWORD_Length() {
     return "At least 4 number required";
   }
+  static get INVALID_SIGNATURE() {
+    return "Invalid Signature";
+  }
   static get ALREADY_EXISTS() {
     return "mPIN already exists. Reset required.";
   }
