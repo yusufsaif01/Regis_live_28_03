@@ -15,9 +15,9 @@ class Route {
 		accessToken(accessTokenRouter);
 		userProfileRoutes(apiRouter);
 		paymentRoutes(apiRouter);
-		app.use("/registration/in/access-token", accessTokenRouter)
-		app.use('/registration/in', checkAccessToken(), apiRouter);
-		app.use("/apidocs", express.static("apidocs/doc"));
+		app.use("/v3/registration/in/access-token", accessTokenRouter)
+		app.use('/v3/registration/in', checkAccessToken(), apiRouter);
+		app.use("/v3/apidocs", express.static("apidocs/doc"));
 		app.use("/uploads", express.static("uploads"));
 		app.use("/public", express.static("public"));
 

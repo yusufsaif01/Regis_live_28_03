@@ -734,10 +734,8 @@ class PaymentService {
         },
         order_note: `Payment for ${data.length} players`,
         return_url: "https://test.yftchain.com/",
-        notify_url:
-          "https://test.yftchain.com/v3/api/registration/in/payment-webhook",
-        order_meta: {
-          notify_url: "https://test.yftchain.com/v3/api/payment-webhook",
+        "order_meta": {
+         "notify_url": "https://test.yftchain.com/v3/registration/in/payment-webhook",
         },
       };
 
@@ -948,11 +946,34 @@ class PaymentService {
         event_time: new Date(data.event_time),
         webhook_type: data.type,
       };
-
-      console.log("Formatted Data for SQL:", dataToInsert);
-      const pdfBuffer = await this.generateInvoicePDF(dataToInsert);
+      let orderDetails = await this.orderCreateUtilityInst.findManyFormMysql({
+	             order_id: data.data.order.order_id,
+	           });
+	console.log("check fetched orderDetailss", orderDetails);
+	  const playerUserIds = [
+            ...new Set(orderDetails.map((record) => record.player_id).filter(Boolean)
+	  ),
+	];
+	 const academyUserIds = [
+	    ...new Set(orderDetails.map((record) => record.academy_id).filter(Boolean)
+	 ),
+	];
+      console.log("playerUserid and academy userid is=>",playerUserIds,academyUserIds)
+	const playerDetails = await this.PlayerUtilityInst.find({
+	user_id:{$in:playerUserIds}
+	})
+	const academyDetails = await this.clubAcademyUtilityInst.find({
+	user_id:{$in: academyUserIds}
+	});
+	const existingRecord = await this.bankDetailsUtility.findOneFromMysql({
+		      parent_user_id: data.data.customer_details.customer_id,
+		    });
+	console.log("999999999999999999999999999999")
+	 console.log("player details", playerDetails);
+	 console.log("academy details", academyDetails);
+    // const pdfBuffer = await this.generateInvoicePDF(dataToInsert);
       // Save PDF to database (optional)
-      req.body.pdf_invoice = pdfBuffer;
+     // req.body.pdf_invoice = pdfBuffer;
       // Call the function that inserts data into MySQL
       await this.paymentRecordUtilityInst.insertInSql(dataToInsert);
 
@@ -964,7 +985,7 @@ class PaymentService {
 
   async generateInvoicePDF(orderData) {
     console.log("orderData in generateInvoicePdf=>", orderData);
-    const totalRecords = data.length;
+   // const totalRecords = data.length;
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ margin: 50 });
